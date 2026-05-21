@@ -1,0 +1,20 @@
+{
+  "name": "artemis",
+  "version": "1.0.0",
+  "scripts": {
+    "check:ytdlp": "yt-dlp --version",
+    "start": "ts-node index.ts",
+    "build": "tsc",
+    "dev": "tsx watch index.ts"
+  },
+  "dependencies": {
+    "@scalar/express-api-reference": "^0.9.16",
+    "@types/express": "^5.0.6",
+    "express": "^5.2.1",
+    "tsx": "^4.22.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "^6.0.3"
+  }
+}

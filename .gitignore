@@ -1,0 +1,8 @@
+node_modules
+/dist
+/output
+output/
+cookies.txt
+*.live_chat.json
+.env
+AGENTS.md
