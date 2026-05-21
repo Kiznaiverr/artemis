@@ -1,5 +1,6 @@
 services:
   artemis:
+    container_name: artemis-app
     build:
       context: .
       dockerfile: Dockerfile
@@ -12,6 +13,7 @@ services:
     restart: unless-stopped
 
   cloudflared:
+    container_name: artemis-cloudflared
     image: cloudflare/cloudflared:latest
     command: tunnel --no-autoupdate run
     environment:
