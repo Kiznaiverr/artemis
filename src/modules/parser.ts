@@ -103,13 +103,7 @@ export function scoreComment(
     return null;
   }
 
-  logger.debug(`accepted comment at ${comment.timestampMs}`);
-
   const score = scoreText(text, config, keywords);
-
-  logger.debug(
-    `comment scored at ${comment.timestampMs} => ${score.toFixed(2)}`,
-  );
 
   return {
     timestampMs: comment.timestampMs,
@@ -122,8 +116,13 @@ export function parseComments(
   config: AppConfig,
 ): WeightedEvent[] {
   logger.info(`parsing comments: ${comments.length}`);
-
-  return comments
+  const events = comments
     .map((comment) => scoreComment(comment, config))
     .filter((event): event is WeightedEvent => event !== null);
+
+  logger.info(
+    `parsed comments: ${comments.length}, accepted: ${events.length}`,
+  );
+
+  return events;
 }
