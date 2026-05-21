@@ -24,7 +24,7 @@ export function normalize(
 
   logger.info(`normalizing ${series.length} series points`);
 
-  return series.map((point) => {
+  const normalizedSeries = series.map((point) => {
     // Use a nearby baseline when enough windows are available.
     const neighboringScores = series
       .filter(
@@ -47,4 +47,8 @@ export function normalize(
       normalizedScore,
     };
   });
+
+  logger.info(`normalized series points: ${normalizedSeries.length}`);
+
+  return normalizedSeries;
 }

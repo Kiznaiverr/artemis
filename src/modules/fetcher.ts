@@ -7,57 +7,8 @@ import { LiveChatRawEntry, WeightedEvent } from "../types/comment.types";
 import { logger } from "../utils/logger";
 import { scoreComment } from "./parser";
 
-const PROGRESS_LOG_INTERVAL_MS = 5000;
-
-let lastProgressSummary = "";
-let lastProgressLoggedAt = 0;
-
-function normalizeProgressLine(line: string): string {
-  return line.replace(/\s+/g, " ").trim();
-}
-
-function shouldLogProgressLine(line: string): boolean {
-  const now = Date.now();
-
-  if (line.includes("Destination:") || line.includes("Downloading live chat")) {
-    lastProgressSummary = normalizeProgressLine(line);
-    lastProgressLoggedAt = now;
-    return true;
-  }
-
-  if (now - lastProgressLoggedAt >= PROGRESS_LOG_INTERVAL_MS) {
-    lastProgressSummary = normalizeProgressLine(line);
-    lastProgressLoggedAt = now;
-    return true;
-  }
-
-  return false;
-}
-
 function logYtDlpOutput(chunk: Buffer): void {
-  const text = chunk.toString("utf8");
-  const lines = text.split(/\r?\n|\r/).map((line) => line.trim());
-
-  for (const line of lines) {
-    if (!line) continue;
-
-    const isProgressLine =
-      line.includes("[download]") ||
-      line.includes("[ExtractAudio]") ||
-      line.includes("[info]") ||
-      line.includes("[generic]") ||
-      line.includes("[youtube]") ||
-      line.includes("[youtube_live_chat]");
-
-    if (isProgressLine) {
-      if (shouldLogProgressLine(line)) {
-        logger.debug(lastProgressSummary);
-      }
-      continue;
-    }
-
-    logger.debug(line);
-  }
+  void chunk;
 }
 
 function runYtDlp(args: string[], executablePath: string): Promise<void> {

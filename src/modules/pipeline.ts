@@ -13,13 +13,10 @@ export async function runPeakPipeline(
   logger.info(`starting job: ${jobId}`);
 
   const events = await fetchLiveChat(config);
-  logger.debug(`weighted events: ${events.length}`);
 
   const series = buildTimeSeries(events, config);
-  logger.debug(`time series points: ${series.length}`);
 
   const normalizedSeries = normalize(series, config);
-  logger.debug(`normalized points: ${normalizedSeries.length}`);
 
   const clips = pickPeaks(normalizedSeries, config);
   logger.info(`selected peaks: ${clips.length}`);

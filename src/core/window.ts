@@ -44,13 +44,13 @@ export function buildTimeSeries(
       center + halfWindow,
     );
 
-    logger.debug(`window center ${center} scored ${rawScore.toFixed(2)}`);
-
     series.push({
       timestampMs: center,
       rawScore,
     });
   }
+
+  logger.info(`built time series points: ${series.length}`);
 
   return series;
 }
