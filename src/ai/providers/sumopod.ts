@@ -27,6 +27,57 @@ function formatJsonValue(value: unknown): string {
   }
 }
 
+function formatErrorValue(value: unknown): string {
+  if (value === undefined) {
+    return "undefined";
+  }
+
+  if (value === null) {
+    return "null";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (value instanceof Error) {
+    return formatErrorDetails(value);
+  }
+
+  try {
+    return JSON.stringify(value, Object.getOwnPropertyNames(value), 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function formatFullError(error: Error): string {
+  const ownKeys = Object.getOwnPropertyNames(error);
+  const fields: string[] = [];
+
+  fields.push(`name=${error.name}`);
+  fields.push(`message=${error.message}`);
+
+  for (const key of ownKeys) {
+    if (key === "name" || key === "message" || key === "stack") {
+      continue;
+    }
+
+    const value = (error as unknown as Record<string, unknown>)[key];
+    fields.push(`${key}=${formatErrorValue(value)}`);
+  }
+
+  if (error.stack) {
+    fields.push(`stack=${error.stack}`);
+  }
+
+  return fields.join(" | ");
+}
+
 function formatErrorDetails(error: unknown): string {
   if (error instanceof OpenAI.APIError) {
     const details: string[] = [];
@@ -55,7 +106,7 @@ function formatErrorDetails(error: unknown): string {
   }
 
   if (error instanceof Error) {
-    return error.message;
+    return formatFullError(error);
   }
 
   return String(error);
