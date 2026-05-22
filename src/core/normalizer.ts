@@ -41,9 +41,10 @@ export function normalize(
       neighboringScores.length >= 3 ? mean(neighboringScores) : globalMean;
     const normalizedScore = baseline === 0 ? 0 : point.rawScore / baseline;
 
-    logger.debug(
-      `${prefix} normalized point ${point.timestampMs}: raw=${point.rawScore.toFixed(2)} baseline=${baseline.toFixed(2)} score=${normalizedScore.toFixed(2)}`,
-    );
+    // uncomment this for detailed normalization logs
+    // logger.debug(
+    //   `${prefix} normalized point ${point.timestampMs}: raw=${point.rawScore.toFixed(2)} baseline=${baseline.toFixed(2)} score=${normalizedScore.toFixed(2)}`,
+    // );
 
     return {
       ...point,
