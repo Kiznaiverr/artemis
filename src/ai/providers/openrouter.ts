@@ -18,6 +18,22 @@ function normalizeHeaderValue(value?: string): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
+function formatJsonValue(value: unknown): string {
+  if (value === undefined) {
+    return "undefined";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 function formatErrorDetails(error: unknown): string {
   if (error instanceof OpenAI.APIError) {
     const details: string[] = [];
@@ -34,6 +50,10 @@ function formatErrorDetails(error: unknown): string {
 
     if (error.requestID) {
       details.push(`request_id=${error.requestID}`);
+    }
+
+    if (error.error !== undefined) {
+      details.push(`body=${formatJsonValue(error.error)}`);
     }
 
     details.push(`message=${error.message}`);
@@ -138,7 +158,7 @@ export class OpenRouterRanker implements AiRanker {
       content = response.choices?.[0]?.message?.content;
     } catch (error) {
       throw new Error(
-        `OpenRouter request failed: ${formatErrorDetails(error)}`,
+        `OpenRouter request failed (model=${this.config.model}, baseUrl=${normalizeBaseUrl(this.config.baseUrl)}): ${formatErrorDetails(error)}`,
       );
     }
 
