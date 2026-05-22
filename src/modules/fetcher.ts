@@ -242,6 +242,8 @@ function buildBaseArgs(config: AppConfig, outputTemplate: string): string[] {
     args.push("--js-runtimes", config.ytdlp.jsRuntime);
   }
 
+  args.push("--remote-components", "ejs:github");
+
   if (config.auth.mode === "browser") {
     args.push("--cookies-from-browser", config.auth.browser ?? "chrome");
   } else if (config.auth.mode === "cookies-file") {
