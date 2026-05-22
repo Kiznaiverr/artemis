@@ -1,4 +1,5 @@
 export type AuthMode = "none" | "browser" | "cookies-file";
+export type AiProviderName = "openrouter" | "sumopod";
 export type BrowserName =
   | "chrome"
   | "firefox"
@@ -36,6 +37,7 @@ export interface AppConfig {
     minLength: number;
   };
   ai: {
+    provider: AiProviderName;
     openrouter: {
       apiKey: string;
       model: string;
@@ -45,6 +47,8 @@ export interface AppConfig {
     };
     sumopod: {
       apiKey: string;
+      model: string;
+      baseUrl: string;
     };
   };
   output: {

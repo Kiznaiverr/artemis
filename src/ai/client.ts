@@ -1,8 +1,7 @@
 import { AiRanker } from "./types";
 import { OpenRouterRanker } from "./providers/openrouter";
 import { SumopodRanker } from "./providers/sumopod";
-
-export type AiProviderName = "openrouter" | "sumopod";
+import { AiProviderName } from "../types/config.types";
 
 export interface AiClientConfig {
   provider: AiProviderName;

@@ -52,6 +52,16 @@ function getEnvString(key: string, fallback = ""): string {
   return process.env[key] ?? fallback;
 }
 
+function normalizeAiProvider(value?: string): AppConfig["ai"]["provider"] {
+  const normalized = value?.trim().toLowerCase();
+
+  if (normalized === "sumopod") {
+    return "sumopod";
+  }
+
+  return "openrouter";
+}
+
 function getEnvNumber(key: string, fallback: number): number {
   const rawValue = process.env[key];
   if (rawValue === undefined || rawValue.trim() === "") {
@@ -96,6 +106,9 @@ export const config: AppConfig = {
     minLength: 2,
   },
   ai: {
+    provider: normalizeAiProvider(
+      getEnvString("api_provider", getEnvString("API_PROVIDER", "openrouter")),
+    ),
     openrouter: {
       apiKey: getEnvString(
         "openrouter_api_key",
@@ -111,6 +124,8 @@ export const config: AppConfig = {
         "sumopod_api_key",
         getEnvString("SUMOPOD_API_KEY", ""),
       ),
+      model: getEnvString("SUMOPOD_MODEL", "deepseek-v4-flash"),
+      baseUrl: getEnvString("SUMOPOD_BASE_URL", "https://api.sumopod.com/v1"),
     },
   },
   output: {

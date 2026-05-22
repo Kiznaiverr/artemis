@@ -7,6 +7,29 @@ import { loadRankerPrompts } from "./promptLoader";
 import { PeakRankSelection, SubtitleSegment } from "./types";
 import { logger } from "../utils/logger";
 
+function getAiProviderConfig(config: AppConfig): {
+  provider: AppConfig["ai"]["provider"];
+  apiKey: string;
+  model: string;
+  baseUrl: string;
+} {
+  if (config.ai.provider === "sumopod") {
+    return {
+      provider: config.ai.provider,
+      apiKey: config.ai.sumopod.apiKey,
+      model: config.ai.sumopod.model,
+      baseUrl: config.ai.sumopod.baseUrl,
+    };
+  }
+
+  return {
+    provider: config.ai.provider,
+    apiKey: config.ai.openrouter.apiKey,
+    model: config.ai.openrouter.model,
+    baseUrl: config.ai.openrouter.baseUrl,
+  };
+}
+
 function jobPrefix(alias?: string): string {
   return alias ? `[${alias}]` : "[job]";
 }
@@ -69,10 +92,11 @@ export async function rerankPeakClips(
     return [];
   }
 
-  const apiKey = config.ai.openrouter.apiKey.trim();
+  const aiConfig = getAiProviderConfig(config);
+  const apiKey = aiConfig.apiKey.trim();
   if (!apiKey) {
     logger.warn(
-      `${prefix} OpenRouter API key missing, using heuristic peaks only`,
+      `${prefix} ${aiConfig.provider} API key missing, using heuristic peaks only`,
     );
     return fallbackTopClips(clips, limit);
   }
@@ -83,10 +107,10 @@ export async function rerankPeakClips(
     // Tighten prompts with strict, unambiguous rules for the model.
     const strictAddendum = `Strict rules:\n- Return JSON only, exactly matching the requested schema. Do not include any surrounding text, explanation, or markdown.\n- Return at most ${limit} items in the \"selected\" array. Do not return more.\n- Each selected item must include: integer \"candidateIndex\" (1-based index into the provided Candidates array), \"reason\" (short, <=140 chars), and \"score\" (number between 0 and 1).\n- Order \"selected\" from best to worst.\n- Do not add extra fields or nested objects.\n- Reasons must cite brief evidence from the candidate context (e.g. \"chat_count=12, caps=3, subtitle=\"wow\"\").\n- If unsure, prefer candidates with higher chat density and clearer escalation signals.\n- Do not hallucinate or invent facts not present in the provided comments/subtitle snippets.`;
     const ranker = createAiRanker({
-      provider: "openrouter",
+      provider: aiConfig.provider,
       apiKey,
-      model: config.ai.openrouter.model,
-      baseUrl: config.ai.openrouter.baseUrl,
+      model: aiConfig.model,
+      baseUrl: aiConfig.baseUrl,
     });
 
     const candidates = buildPeakContextCandidates(
