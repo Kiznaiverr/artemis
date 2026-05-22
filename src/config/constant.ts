@@ -94,6 +94,24 @@ export const config: AppConfig = {
     enabled: true,
     minLength: 2,
   },
+  ai: {
+    openrouter: {
+      apiKey: getEnvString(
+        "openrouter_api_key",
+        getEnvString("OPENROUTER_API_KEY", ""),
+      ),
+      model: "deepseek/deepseek-v4-flash:free",
+      baseUrl: "https://openrouter.ai/api/v1",
+      httpReferer: "",
+      appTitle: "",
+    },
+    sumopod: {
+      apiKey: getEnvString(
+        "sumopod_api_key",
+        getEnvString("SUMOPOD_API_KEY", ""),
+      ),
+    },
+  },
   output: {
     dir: "./output",
     filename: "peaks.json",

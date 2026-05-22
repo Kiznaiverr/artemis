@@ -3,9 +3,15 @@ import path from "path";
 import readline from "readline";
 import { spawn } from "child_process";
 import { AppConfig } from "../types/config.types";
-import { LiveChatRawEntry, WeightedEvent } from "../types/comment.types";
+import {
+  LiveChatData,
+  LiveChatRawEntry,
+  RawComment,
+  WeightedEvent,
+} from "../types/comment.types";
 import { logger } from "../utils/logger";
 import { scoreComment } from "./parser";
+import { loadBestSubtitleSegments } from "../ai/subtitleParser";
 
 const PROGRESS_LOG_INTERVAL_MS = 5000;
 const DEFAULT_YTDLP_TIMEOUT_MS = 5 * 60 * 1000;
@@ -22,6 +28,11 @@ const FATAL_YTDLP_PATTERNS = [
   /unable to download video subtitles/i,
 ];
 
+type ProgressLogState = {
+  lastProgressSummary: string;
+  lastProgressLoggedAt: number;
+};
+
 function normalizeProgressLine(line: string): string {
   return line.replace(/\s+/g, " ").trim();
 }
@@ -30,18 +41,21 @@ function jobPrefix(alias?: string): string {
   return alias ? `[${alias}]` : "[job]";
 }
 
-function shouldLogProgressLine(line: string): boolean {
+function shouldLogProgressLine(line: string, state: ProgressLogState): boolean {
   const now = Date.now();
 
   if (line.includes("Destination:") || line.includes("Downloading live chat")) {
-    lastProgressSummary = normalizeProgressLine(line);
-    lastProgressLoggedAt = now;
+    state.lastProgressSummary = normalizeProgressLine(line);
+    state.lastProgressLoggedAt = now;
     return true;
   }
 
-  if (now - lastProgressLoggedAt >= PROGRESS_LOG_INTERVAL_MS) {
-    lastProgressSummary = normalizeProgressLine(line);
-    lastProgressLoggedAt = now;
+  if (
+    state.lastProgressLoggedAt === 0 ||
+    now - state.lastProgressLoggedAt >= PROGRESS_LOG_INTERVAL_MS
+  ) {
+    state.lastProgressSummary = normalizeProgressLine(line);
+    state.lastProgressLoggedAt = now;
     return true;
   }
 
@@ -52,6 +66,10 @@ function logYtDlpOutput(
   chunk: Buffer,
   source: "stdout" | "stderr",
   alias?: string,
+  state: ProgressLogState = {
+    lastProgressSummary: "",
+    lastProgressLoggedAt: 0,
+  },
 ): void {
   const text = chunk.toString("utf8");
   const lines = text.split(/\r?\n|\r/).map((line) => line.trim());
@@ -61,10 +79,11 @@ function logYtDlpOutput(
     if (!line) continue;
 
     if (line.includes("[download]") || line.includes("[info]")) {
-      if (shouldLogProgressLine(line)) {
-        logger.debug(`${prefix} [yt-dlp:${source}] ${lastProgressSummary}`);
+      if (shouldLogProgressLine(line, state)) {
+        logger.debug(
+          `${prefix} [yt-dlp:${source}] ${state.lastProgressSummary}`,
+        );
       }
-      logger.debug(`${prefix} [yt-dlp:${source}] ${line}`);
       continue;
     }
 
@@ -107,6 +126,10 @@ function runYtDlp(
   alias?: string,
 ): Promise<void> {
   const timeoutMs = getYtDlpTimeoutMs();
+  const progressState: ProgressLogState = {
+    lastProgressSummary: "",
+    lastProgressLoggedAt: 0,
+  };
 
   return new Promise((resolve, reject) => {
     const proc = spawn(executablePath, args, {
@@ -136,12 +159,12 @@ function runYtDlp(
 
     proc.stdout.on("data", (data: Buffer) => {
       stdoutBuffer += data.toString("utf8");
-      logYtDlpOutput(data, "stdout", alias);
+      logYtDlpOutput(data, "stdout", alias, progressState);
     });
 
     proc.stderr.on("data", (data: Buffer) => {
       stderrBuffer += data.toString("utf8");
-      logYtDlpOutput(data, "stderr", alias);
+      logYtDlpOutput(data, "stderr", alias, progressState);
     });
 
     proc.on("error", (err) => {
@@ -230,6 +253,34 @@ function buildArgs(config: AppConfig, outputTemplate: string): string[] {
   return args;
 }
 
+function buildSubtitleArgs(
+  config: AppConfig,
+  outputTemplate: string,
+): string[] {
+  const args: string[] = [
+    config.videoUrl,
+    "--skip-download",
+    "--write-subs",
+    "--write-auto-subs",
+    "--sub-langs",
+    "all",
+    "-o",
+    outputTemplate,
+  ];
+
+  if (config.auth.mode === "browser") {
+    args.push("--cookies-from-browser", config.auth.browser ?? "chrome");
+  } else if (config.auth.mode === "cookies-file") {
+    const cookiesFile = config.auth.cookiesFile ?? "./cookies.txt";
+    if (!fs.existsSync(cookiesFile)) {
+      throw new Error(`cookies-file not found: ${cookiesFile}`);
+    }
+    args.push("--cookies", cookiesFile);
+  }
+
+  return args;
+}
+
 function findChatFile(outputDir: string): string {
   const files = fs
     .readdirSync(outputDir)
@@ -260,8 +311,9 @@ async function parseChatFile(
   filePath: string,
   config: AppConfig,
   alias?: string,
-): Promise<WeightedEvent[]> {
+): Promise<LiveChatData> {
   const events: WeightedEvent[] = [];
+  const comments: RawComment[] = [];
   const input = fs.createReadStream(filePath, { encoding: "utf8" });
   const reader = readline.createInterface({
     input,
@@ -303,6 +355,11 @@ async function parseChatFile(
 
         if (!text) continue;
 
+        comments.push({
+          text,
+          timestampMs: offsetMs,
+        });
+
         const event = scoreComment(
           {
             text,
@@ -322,16 +379,18 @@ async function parseChatFile(
   }
 
   if (alias) {
-    logger.debug(`[${alias}] parsed live chat file entries: ${events.length}`);
+    logger.debug(
+      `[${alias}] parsed live chat file entries: comments=${comments.length} weighted=${events.length}`,
+    );
   }
 
-  return events;
+  return { events, comments };
 }
 
 export async function fetchLiveChat(
   config: AppConfig,
   alias?: string,
-): Promise<WeightedEvent[]> {
+): Promise<LiveChatData> {
   const { executablePath, outputDir } = config.ytdlp;
 
   fs.mkdirSync(outputDir, { recursive: true });
@@ -349,20 +408,35 @@ export async function fetchLiveChat(
   try {
     await runYtDlp(args, executablePath, alias);
 
+    const subtitleArgs = buildSubtitleArgs(config, outputTemplate);
+    logger.info(`${prefix} Downloading subtitles via yt-dlp...`);
+    try {
+      await runYtDlp(subtitleArgs, executablePath, alias);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.warn(`${prefix} Subtitle download skipped: ${message}`);
+    }
+
     const chatFile = findChatFile(runOutputDir);
     logger.info(`${prefix} Parsing: ${chatFile}`);
 
     try {
-      const events = await parseChatFile(chatFile, config, alias);
-      logger.info(`${prefix} Parsed ${events.length} weighted events.`);
+      const data = await parseChatFile(chatFile, config, alias);
+      data.subtitleSegments = await loadBestSubtitleSegments(
+        runOutputDir,
+        alias,
+      );
+      logger.info(
+        `${prefix} Parsed comments=${data.comments.length} weighted=${data.events.length}.`,
+      );
 
-      if (events.length === 0) {
+      if (data.events.length === 0) {
         throw new Error(
           `${prefix} No comments parsed. The live chat replay may be empty or unsupported.`,
         );
       }
 
-      return events;
+      return data;
     } finally {
       try {
         if (fs.existsSync(chatFile)) {

@@ -25,8 +25,12 @@ Fill in [.env](.env). A ready template is available in [.env.example](.env.examp
 - `WINDOW_SIZE` and `WINDOW_STEP` for the rolling window
 - `PEAK_MIN_GAP_SECONDS` for the minimum distance between peaks
 - `LOG_LEVEL` to control logger output (`error`, `warn`, `info`, or `debug`)
+- `openrouter_api_key` and `sumopod_api_key` for AI provider authentication
 
-The other values already have defaults and can be left as-is.
+AI provider settings other than API keys are hardcoded in [`src/config/constant.ts`](src/config/constant.ts).
+
+OpenRouter uses the standard chat completions endpoint at `https://openrouter.ai/api/v1/chat/completions`.
+The API key is sent as a Bearer token.
 
 `info` is the default level.
 

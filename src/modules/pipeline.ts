@@ -5,6 +5,7 @@ import { normalize } from "../core/normalizer";
 import { pickPeaks } from "../core/peakPicker";
 import { fetchLiveChat } from "./fetcher";
 import { logger } from "../utils/logger";
+import { rerankPeakClips } from "../ai/peakRanker";
 
 function jobPrefix(alias?: string): string {
   return alias ? `[${alias}]` : "[job]";
@@ -19,13 +20,30 @@ export async function runPeakPipeline(
 
   logger.info(`${prefix} starting job`);
 
-  const events = await fetchLiveChat(config, alias);
+  const liveChat = await fetchLiveChat(config, alias);
 
-  const series = buildTimeSeries(events, config, alias);
+  const series = buildTimeSeries(liveChat.events, config, alias);
 
   const normalizedSeries = normalize(series, config, alias);
 
-  const clips = pickPeaks(normalizedSeries, config, alias);
+  const candidateLimit = Math.max(config.topN, 20);
+  const heuristicClips = pickPeaks(
+    normalizedSeries,
+    {
+      ...config,
+      topN: candidateLimit,
+    },
+    alias,
+  );
+
+  const clips = await rerankPeakClips(
+    heuristicClips,
+    liveChat.comments,
+    liveChat.subtitleSegments,
+    config,
+    alias,
+  );
+
   logger.info(`${prefix} selected peaks: ${clips.length}`);
 
   return {

@@ -8,6 +8,12 @@ export interface WeightedEvent {
   score: number;
 }
 
+export interface LiveChatData {
+  events: WeightedEvent[];
+  comments: RawComment[];
+  subtitleSegments?: import("../ai/types").SubtitleSegment[];
+}
+
 /**
  * Raw shape of a single action from a yt-dlp .live_chat.json file.
  * The file is newline-delimited JSON — one object per line.

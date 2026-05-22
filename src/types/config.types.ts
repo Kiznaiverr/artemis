@@ -34,6 +34,18 @@ export interface AppConfig {
     enabled: boolean;
     minLength: number;
   };
+  ai: {
+    openrouter: {
+      apiKey: string;
+      model: string;
+      baseUrl: string;
+      httpReferer?: string;
+      appTitle?: string;
+    };
+    sumopod: {
+      apiKey: string;
+    };
+  };
   output: {
     dir: string;
     filename: string;
