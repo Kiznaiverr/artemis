@@ -8,9 +8,19 @@ import { logger } from "../utils/logger";
 import { scoreComment } from "./parser";
 
 const PROGRESS_LOG_INTERVAL_MS = 5000;
+const DEFAULT_YTDLP_TIMEOUT_MS = 5 * 60 * 1000;
 
 let lastProgressSummary = "";
 let lastProgressLoggedAt = 0;
+
+const FATAL_YTDLP_PATTERNS = [
+  /there are no subtitles for the requested languages/i,
+  /no subtitles were downloaded/i,
+  /requested subtitles not available/i,
+  /live chat replay is not available/i,
+  /this video does not have a live chat replay/i,
+  /unable to download video subtitles/i,
+];
 
 function normalizeProgressLine(line: string): string {
   return line.replace(/\s+/g, " ").trim();
@@ -34,63 +44,150 @@ function shouldLogProgressLine(line: string): boolean {
   return false;
 }
 
-function logYtDlpOutput(chunk: Buffer): void {
+function logYtDlpOutput(chunk: Buffer, source: "stdout" | "stderr"): void {
   const text = chunk.toString("utf8");
   const lines = text.split(/\r?\n|\r/).map((line) => line.trim());
 
   for (const line of lines) {
     if (!line) continue;
 
-    const isProgressLine =
-      line.includes("[download]") ||
-      line.includes("[ExtractAudio]") ||
-      line.includes("[info]") ||
-      line.includes("[generic]") ||
-      line.includes("[youtube]") ||
-      line.includes("[youtube_live_chat]");
-
-    if (isProgressLine) {
+    if (line.includes("[download]") || line.includes("[info]")) {
       if (shouldLogProgressLine(line)) {
-        logger.debug(lastProgressSummary);
+        logger.debug(`[yt-dlp:${source}] ${lastProgressSummary}`);
       }
+      logger.debug(`[yt-dlp:${source}] ${line}`);
       continue;
     }
 
-    logger.debug(line);
+    logger.debug(`[yt-dlp:${source}] ${line}`);
   }
 }
 
+function detectFatalYtDlpError(output: string): string | null {
+  for (const line of output.split(/\r?\n|\r/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    for (const pattern of FATAL_YTDLP_PATTERNS) {
+      if (pattern.test(trimmed)) {
+        return trimmed;
+      }
+    }
+  }
+
+  return null;
+}
+
+function getYtDlpTimeoutMs(): number {
+  const rawTimeout = process.env.YTDLP_TIMEOUT_MS;
+  if (!rawTimeout || rawTimeout.trim() === "") {
+    return DEFAULT_YTDLP_TIMEOUT_MS;
+  }
+
+  const parsed = Number(rawTimeout);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_YTDLP_TIMEOUT_MS;
+  }
+
+  return parsed;
+}
+
 function runYtDlp(args: string[], executablePath: string): Promise<void> {
+  const timeoutMs = getYtDlpTimeoutMs();
+
   return new Promise((resolve, reject) => {
     const proc = spawn(executablePath, args, {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
+    let stdoutBuffer = "";
+    let stderrBuffer = "";
+    let finished = false;
+    let timeoutHandle: NodeJS.Timeout | undefined;
+
+    const settle = (callback: () => void): void => {
+      if (finished) {
+        return;
+      }
+
+      finished = true;
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+      callback();
+    };
+
+    logger.debug(`[yt-dlp] spawned pid=${proc.pid ?? "unknown"}`);
+
     proc.stdout.on("data", (data: Buffer) => {
-      logYtDlpOutput(data);
+      stdoutBuffer += data.toString("utf8");
+      logYtDlpOutput(data, "stdout");
     });
 
     proc.stderr.on("data", (data: Buffer) => {
-      logYtDlpOutput(data);
+      stderrBuffer += data.toString("utf8");
+      logYtDlpOutput(data, "stderr");
     });
 
     proc.on("error", (err) => {
-      reject(
-        new Error(
-          `Failed to start yt-dlp: ${err.message}\n` +
-            `Make sure yt-dlp is installed and available in PATH.\n` +
-            `Install: pip install yt-dlp`,
-        ),
+      settle(() => {
+        reject(
+          new Error(
+            `Failed to start yt-dlp: ${err.message}\n` +
+              `Make sure yt-dlp is installed and available in PATH.\n` +
+              `Install: pip install yt-dlp`,
+          ),
+        );
+      });
+    });
+
+    proc.on("exit", (code, signal) => {
+      logger.debug(
+        `[yt-dlp] exit pid=${proc.pid ?? "unknown"} code=${code ?? "null"} signal=${signal ?? "null"}`,
       );
     });
 
     proc.on("close", (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`yt-dlp exited with code ${code}`));
-      }
+      const fatalMessage =
+        detectFatalYtDlpError(stderrBuffer) ??
+        detectFatalYtDlpError(stdoutBuffer);
+
+      settle(() => {
+        if (fatalMessage) {
+          reject(
+            new Error(
+              `yt-dlp reported that live chat subtitles are unavailable: ${fatalMessage}`,
+            ),
+          );
+          return;
+        }
+
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(
+            new Error(
+              `yt-dlp exited with code ${code}. Check yt-dlp output above for details.`,
+            ),
+          );
+        }
+      });
     });
+
+    timeoutHandle = setTimeout(() => {
+      logger.warn(
+        `[yt-dlp] timeout reached pid=${proc.pid ?? "unknown"}, terminating child process`,
+      );
+
+      proc.kill("SIGKILL");
+      settle(() => {
+        reject(
+          new Error(
+            `yt-dlp timed out after ${Math.round(timeoutMs / 1000)}s while downloading live chat.`,
+          ),
+        );
+      });
+    }, timeoutMs);
   });
 }
 
@@ -138,6 +235,10 @@ function findChatFile(outputDir: string): string {
     .sort((left, right) => right.mtime - left.mtime);
 
   return path.join(outputDir, sorted[0].file);
+}
+
+function createRunOutputDir(outputDir: string): string {
+  return fs.mkdtempSync(path.join(outputDir, "run-"));
 }
 
 async function parseChatFile(
@@ -213,39 +314,49 @@ export async function fetchLiveChat(
   const { executablePath, outputDir } = config.ytdlp;
 
   fs.mkdirSync(outputDir, { recursive: true });
+  const runOutputDir = createRunOutputDir(outputDir);
 
-  const outputTemplate = path.join(outputDir, "%(id)s.%(ext)s");
+  const outputTemplate = path.join(runOutputDir, "%(id)s.%(ext)s");
   const args = buildArgs(config, outputTemplate);
 
   logger.info(`Downloading live chat via yt-dlp...`);
   logger.info(`Video: ${config.videoUrl}`);
   logger.info(`Auth mode: ${config.auth.mode}`);
 
-  await runYtDlp(args, executablePath);
-
-  const chatFile = findChatFile(outputDir);
-  logger.info(`Parsing: ${chatFile}`);
-
   try {
-    const events = await parseChatFile(chatFile, config);
-    logger.info(`Parsed ${events.length} weighted events.`);
+    await runYtDlp(args, executablePath);
 
-    if (events.length === 0) {
-      throw new Error(
-        "No comments parsed. The live chat replay may be empty or unsupported.",
-      );
+    const chatFile = findChatFile(runOutputDir);
+    logger.info(`Parsing: ${chatFile}`);
+
+    try {
+      const events = await parseChatFile(chatFile, config);
+      logger.info(`Parsed ${events.length} weighted events.`);
+
+      if (events.length === 0) {
+        throw new Error(
+          "No comments parsed. The live chat replay may be empty or unsupported.",
+        );
+      }
+
+      return events;
+    } finally {
+      try {
+        if (fs.existsSync(chatFile)) {
+          fs.unlinkSync(chatFile);
+          logger.info(`Deleted raw chat file: ${chatFile}`);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.debug(`Failed to delete raw chat file: ${message}`);
+      }
     }
-
-    return events;
   } finally {
     try {
-      if (fs.existsSync(chatFile)) {
-        fs.unlinkSync(chatFile);
-        logger.info(`Deleted raw chat file: ${chatFile}`);
-      }
+      fs.rmSync(runOutputDir, { recursive: true, force: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      logger.debug(`Failed to delete raw chat file: ${message}`);
+      logger.debug(`Failed to remove run output dir: ${message}`);
     }
   }
 }
