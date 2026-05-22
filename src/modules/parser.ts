@@ -2,50 +2,9 @@ import { AppConfig } from "../types/config.types";
 import { RawComment, WeightedEvent } from "../types/comment.types";
 import { logger } from "../utils/logger";
 
-const DEFAULT_HYPE_KEYWORDS = [
-  "gg",
-  "ggg",
-  "gggg",
-  "lol",
-  "lmao",
-  "omg",
-  "wow",
-  "wtf",
-  "haha",
-  "hahaha",
-  "ahaha",
-  "ahahaha",
-  "wkwk",
-  "wkwkwk",
-  "awkwoa",
-  "anjir",
-  "anjing",
-  "gila",
-  "gilak",
-  "mantap",
-  "mampus",
-  "bocil",
-  "gasss",
-  "gass",
-  "lets go",
-  "lesgooo",
-  "ez",
-  "pog",
-  "poggers",
-  "keren",
-  "seru",
-  "woah",
-  "woow",
-];
-
 function isUrlOnly(text: string): boolean {
   const urlPattern = /^(https?:\/\/|www\.)\S+$/i;
   return urlPattern.test(text.trim());
-}
-
-function hasHypeKeyword(text: string, keywords: string[]): boolean {
-  const lowerText = text.toLowerCase();
-  return keywords.some((keyword) => lowerText.includes(keyword.toLowerCase()));
 }
 
 function hasAllCapsWord(text: string): boolean {
@@ -63,13 +22,9 @@ function clampScore(score: number): number {
 function scoreText(
   text: string,
   config: AppConfig,
-  keywords: string[],
 ): number {
   let score = 1;
 
-  if (config.filter.enabled && hasHypeKeyword(text, keywords)) {
-    score += 0.5;
-  }
   if (hasAllCapsWord(text)) {
     score += 0.5;
   }
@@ -87,11 +42,6 @@ export function scoreComment(
   comment: RawComment,
   config: AppConfig,
 ): WeightedEvent | null {
-  const keywords =
-    config.filter.keywords.length > 0
-      ? config.filter.keywords
-      : DEFAULT_HYPE_KEYWORDS;
-
   const text = comment.text.trim();
   if (text.length < config.filter.minLength) {
     return null;
@@ -103,7 +53,7 @@ export function scoreComment(
     return null;
   }
 
-  const score = scoreText(text, config, keywords);
+  const score = scoreText(text, config);
 
   return {
     timestampMs: comment.timestampMs,

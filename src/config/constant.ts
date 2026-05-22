@@ -4,42 +4,6 @@ import { AppConfig } from "../types/config.types";
 
 type EnvMap = Record<string, string>;
 
-const DEFAULT_HYPE_KEYWORDS = [
-  "gg",
-  "ggg",
-  "gggg",
-  "lol",
-  "lmao",
-  "omg",
-  "wow",
-  "wtf",
-  "haha",
-  "hahaha",
-  "ahaha",
-  "ahahaha",
-  "wkwk",
-  "wkwkwk",
-  "awkwoa",
-  "anjir",
-  "anjing",
-  "gila",
-  "gilak",
-  "mantap",
-  "mampus",
-  "bocil",
-  "gasss",
-  "gass",
-  "lets go",
-  "lesgooo",
-  "ez",
-  "pog",
-  "poggers",
-  "keren",
-  "seru",
-  "woah",
-  "woow",
-];
-
 function parseEnvFile(filePath: string): EnvMap {
   if (!fs.existsSync(filePath)) {
     return {};
@@ -128,7 +92,6 @@ export const config: AppConfig = {
   },
   filter: {
     enabled: true,
-    keywords: DEFAULT_HYPE_KEYWORDS,
     minLength: 2,
   },
   output: {

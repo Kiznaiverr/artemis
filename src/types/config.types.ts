@@ -32,7 +32,6 @@ export interface AppConfig {
   };
   filter: {
     enabled: boolean;
-    keywords: string[];
     minLength: number;
   };
   output: {
