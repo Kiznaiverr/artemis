@@ -103,8 +103,8 @@ export const config: AppConfig = {
       ),
       model: "deepseek/deepseek-v4-flash:free",
       baseUrl: "https://openrouter.ai/api/v1",
-      httpReferer: "",
-      appTitle: "",
+      httpReferer: "https://github.com/kiznaiverr/artemis",
+      appTitle: "artemis",
     },
     sumopod: {
       apiKey: getEnvString(

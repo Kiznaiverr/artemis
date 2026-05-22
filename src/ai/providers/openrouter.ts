@@ -1,3 +1,4 @@
+import OpenAI from "openai";
 import { AiRankRequest, AiRanker, PeakRankResponse } from "../types";
 
 export interface OpenRouterConfig {
@@ -10,6 +11,41 @@ export interface OpenRouterConfig {
 
 function normalizeBaseUrl(value?: string): string {
   return value?.trim() || "https://openrouter.ai/api/v1";
+}
+
+function normalizeHeaderValue(value?: string): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function formatErrorDetails(error: unknown): string {
+  if (error instanceof OpenAI.APIError) {
+    const details: string[] = [];
+
+    details.push(`status=${error.status}`);
+
+    if (error.code) {
+      details.push(`code=${error.code}`);
+    }
+
+    if (error.type) {
+      details.push(`type=${error.type}`);
+    }
+
+    if (error.requestID) {
+      details.push(`request_id=${error.requestID}`);
+    }
+
+    details.push(`message=${error.message}`);
+
+    return details.join(" | ");
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
 }
 
 function stripCodeFence(text: string): string {
@@ -46,69 +82,66 @@ function parseRankResponse(content: string): PeakRankResponse {
 }
 
 export class OpenRouterRanker implements AiRanker {
+  private client?: OpenAI;
+
   constructor(private readonly config: OpenRouterConfig) {}
+
+  private getClient(): OpenAI {
+    if (!this.client) {
+      const httpReferer = normalizeHeaderValue(this.config.httpReferer);
+      const appTitle = normalizeHeaderValue(this.config.appTitle);
+
+      this.client = new OpenAI({
+        apiKey: this.config.apiKey,
+        baseURL: normalizeBaseUrl(this.config.baseUrl),
+        defaultHeaders: {
+          ...(httpReferer ? { "HTTP-Referer": httpReferer } : {}),
+          ...(appTitle ? { "X-Title": appTitle } : {}),
+        },
+      });
+    }
+
+    return this.client;
+  }
 
   async rankPeaks(request: AiRankRequest): Promise<PeakRankResponse> {
     if (!this.config.apiKey.trim()) {
       throw new Error("OpenRouter API key is missing. Set OPENROUTER_API_KEY.");
     }
 
-    const response = await fetch(
-      `${normalizeBaseUrl(this.config.baseUrl)}/chat/completions`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.config.apiKey}`,
-          "Content-Type": "application/json",
-          ...(this.config.httpReferer?.trim()
-            ? { "HTTP-Referer": this.config.httpReferer.trim() }
-            : {}),
-          ...(this.config.appTitle?.trim()
-            ? { "X-OpenRouter-Title": this.config.appTitle.trim() }
-            : {}),
-        },
-        body: JSON.stringify({
-          model: this.config.model,
-          temperature: 0.2,
-          messages: [
-            {
-              role: "system",
-              content: [
-                request.systemPrompt,
-                request.contextRules,
-                request.outputFormat,
-              ].join("\n\n"),
-            },
-            {
-              role: "user",
-              content: [
-                request.taskPrompt,
-                "Candidates:",
-                JSON.stringify(request.candidates, null, 2),
-              ].join("\n\n"),
-            },
-          ],
-        }),
-      },
-    );
+    let content: string | null | undefined;
 
-    const payload = (await response.json()) as {
-      choices?: Array<{
-        message?: {
-          content?: string | null;
-        };
-      }>;
-      error?: {
-        message?: string;
-      };
-    };
+    try {
+      const response = await this.getClient().chat.completions.create({
+        model: this.config.model,
+        temperature: 0.2,
+        messages: [
+          {
+            role: "system",
+            content: [
+              request.systemPrompt,
+              request.contextRules,
+              request.outputFormat,
+            ].join("\n\n"),
+          },
+          {
+            role: "user",
+            content: [
+              request.taskPrompt,
+              "Candidates:",
+              JSON.stringify(request.candidates, null, 2),
+            ].join("\n\n"),
+          },
+        ],
+      });
 
-    if (!response.ok) {
-      const message = payload.error?.message ?? `HTTP ${response.status}`;
-      throw new Error(`OpenRouter request failed: ${message}`);
+      content = response.choices?.[0]?.message?.content;
+    } catch (error) {
+      throw new Error(
+        `OpenRouter request failed: ${formatErrorDetails(error)}`,
+      );
     }
 
-    const content = payload.choices?.[0]?.message?.content;
     if (!content) {
       throw new Error("OpenRouter response did not include message content");
     }
