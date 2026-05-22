@@ -16,6 +16,7 @@ export interface AppConfig {
   };
   ytdlp: {
     executablePath: string;
+    jsRuntime?: string;
     outputDir: string;
   };
   topN: number;

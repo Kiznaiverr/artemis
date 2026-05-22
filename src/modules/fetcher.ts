@@ -229,16 +229,18 @@ function runYtDlp(
   });
 }
 
-function buildArgs(config: AppConfig, outputTemplate: string): string[] {
+function buildBaseArgs(config: AppConfig, outputTemplate: string): string[] {
   const args: string[] = [
     config.videoUrl,
     "--skip-download",
     "--write-subs",
-    "--sub-langs",
-    "live_chat",
     "-o",
     outputTemplate,
   ];
+
+  if (config.ytdlp.jsRuntime) {
+    args.push("--js-runtimes", config.ytdlp.jsRuntime);
+  }
 
   if (config.auth.mode === "browser") {
     args.push("--cookies-from-browser", config.auth.browser ?? "chrome");
@@ -253,20 +255,18 @@ function buildArgs(config: AppConfig, outputTemplate: string): string[] {
   return args;
 }
 
+function buildArgs(config: AppConfig, outputTemplate: string): string[] {
+  const args = buildBaseArgs(config, outputTemplate);
+  args.splice(3, 0, "--sub-langs", "live_chat");
+  return args;
+}
+
 function buildSubtitleArgs(
   config: AppConfig,
   outputTemplate: string,
 ): string[] {
-  const args: string[] = [
-    config.videoUrl,
-    "--skip-download",
-    "--write-subs",
-    "--write-auto-subs",
-    "--sub-langs",
-    "all",
-    "-o",
-    outputTemplate,
-  ];
+  const args = buildBaseArgs(config, outputTemplate);
+  args.splice(3, 0, "--write-auto-subs");
 
   if (config.auth.mode === "browser") {
     args.push("--cookies-from-browser", config.auth.browser ?? "chrome");

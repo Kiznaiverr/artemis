@@ -76,6 +76,7 @@ export const config: AppConfig = {
   },
   ytdlp: {
     executablePath: getEnvString("YTDLP_EXECUTABLE", "yt-dlp"),
+    jsRuntime: getEnvString("YTDLP_JS_RUNTIME", "node"),
     outputDir: getEnvString("YTDLP_OUTPUT_DIR", "./output/chat"),
   },
   topN: getEnvNumber("TOP_N", 5),
