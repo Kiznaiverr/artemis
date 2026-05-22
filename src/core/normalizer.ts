@@ -14,6 +14,7 @@ function mean(values: number[]): number {
 export function normalize(
   series: Omit<TimeSeries, "normalizedScore">[],
   _config: AppConfig,
+  alias?: string,
 ): TimeSeries[] {
   if (series.length === 0) {
     return [];
@@ -22,7 +23,9 @@ export function normalize(
   const globalMean = mean(series.map((point) => point.rawScore));
   const baselineWindowMs = 5 * 60 * 1000;
 
-  logger.info(`normalizing ${series.length} series points`);
+  const prefix = alias ? `[${alias}]` : "[job]";
+
+  logger.info(`${prefix} normalizing ${series.length} series points`);
 
   const normalizedSeries = series.map((point) => {
     // Use a nearby baseline when enough windows are available.
@@ -39,7 +42,7 @@ export function normalize(
     const normalizedScore = baseline === 0 ? 0 : point.rawScore / baseline;
 
     logger.debug(
-      `normalized point ${point.timestampMs}: raw=${point.rawScore.toFixed(2)} baseline=${baseline.toFixed(2)} score=${normalizedScore.toFixed(2)}`,
+      `${prefix} normalized point ${point.timestampMs}: raw=${point.rawScore.toFixed(2)} baseline=${baseline.toFixed(2)} score=${normalizedScore.toFixed(2)}`,
     );
 
     return {
@@ -48,7 +51,7 @@ export function normalize(
     };
   });
 
-  logger.info(`normalized series points: ${normalizedSeries.length}`);
+  logger.info(`${prefix} normalized series points: ${normalizedSeries.length}`);
 
   return normalizedSeries;
 }

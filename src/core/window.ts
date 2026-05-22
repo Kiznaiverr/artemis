@@ -19,6 +19,7 @@ function sumScores(
 export function buildTimeSeries(
   events: WeightedEvent[],
   config: AppConfig,
+  alias?: string,
 ): Omit<TimeSeries, "normalizedScore">[] {
   if (events.length === 0) {
     return [];
@@ -33,7 +34,9 @@ export function buildTimeSeries(
   const stepMs = config.window.step * 1000;
   const halfWindow = windowSizeMs / 2;
 
-  logger.info(`building time series with ${events.length} weighted events`);
+  const prefix = alias ? `[${alias}]` : "[job]";
+
+  logger.info(`${prefix} building time series with ${events.length} weighted events`);
 
   const series: Omit<TimeSeries, "normalizedScore">[] = [];
   // Walk the timeline in fixed steps and score each window.
@@ -50,7 +53,7 @@ export function buildTimeSeries(
     });
   }
 
-  logger.info(`built time series points: ${series.length}`);
+  logger.info(`${prefix} built time series points: ${series.length}`);
 
   return series;
 }

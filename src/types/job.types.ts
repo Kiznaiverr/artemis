@@ -16,6 +16,7 @@ export interface JobResult {
 
 export interface JobRecord {
   jobId: string;
+  alias: string;
   status: JobStatus;
   createdAt: string;
   updatedAt: string;

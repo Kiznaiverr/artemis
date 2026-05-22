@@ -26,6 +26,10 @@ function normalizeProgressLine(line: string): string {
   return line.replace(/\s+/g, " ").trim();
 }
 
+function jobPrefix(alias?: string): string {
+  return alias ? `[${alias}]` : "[job]";
+}
+
 function shouldLogProgressLine(line: string): boolean {
   const now = Date.now();
 
@@ -44,22 +48,27 @@ function shouldLogProgressLine(line: string): boolean {
   return false;
 }
 
-function logYtDlpOutput(chunk: Buffer, source: "stdout" | "stderr"): void {
+function logYtDlpOutput(
+  chunk: Buffer,
+  source: "stdout" | "stderr",
+  alias?: string,
+): void {
   const text = chunk.toString("utf8");
   const lines = text.split(/\r?\n|\r/).map((line) => line.trim());
+  const prefix = jobPrefix(alias);
 
   for (const line of lines) {
     if (!line) continue;
 
     if (line.includes("[download]") || line.includes("[info]")) {
       if (shouldLogProgressLine(line)) {
-        logger.debug(`[yt-dlp:${source}] ${lastProgressSummary}`);
+        logger.debug(`${prefix} [yt-dlp:${source}] ${lastProgressSummary}`);
       }
-      logger.debug(`[yt-dlp:${source}] ${line}`);
+      logger.debug(`${prefix} [yt-dlp:${source}] ${line}`);
       continue;
     }
 
-    logger.debug(`[yt-dlp:${source}] ${line}`);
+    logger.debug(`${prefix} [yt-dlp:${source}] ${line}`);
   }
 }
 
@@ -92,7 +101,11 @@ function getYtDlpTimeoutMs(): number {
   return parsed;
 }
 
-function runYtDlp(args: string[], executablePath: string): Promise<void> {
+function runYtDlp(
+  args: string[],
+  executablePath: string,
+  alias?: string,
+): Promise<void> {
   const timeoutMs = getYtDlpTimeoutMs();
 
   return new Promise((resolve, reject) => {
@@ -117,23 +130,25 @@ function runYtDlp(args: string[], executablePath: string): Promise<void> {
       callback();
     };
 
-    logger.debug(`[yt-dlp] spawned pid=${proc.pid ?? "unknown"}`);
+    logger.debug(
+      `${jobPrefix(alias)} [yt-dlp] spawned pid=${proc.pid ?? "unknown"}`,
+    );
 
     proc.stdout.on("data", (data: Buffer) => {
       stdoutBuffer += data.toString("utf8");
-      logYtDlpOutput(data, "stdout");
+      logYtDlpOutput(data, "stdout", alias);
     });
 
     proc.stderr.on("data", (data: Buffer) => {
       stderrBuffer += data.toString("utf8");
-      logYtDlpOutput(data, "stderr");
+      logYtDlpOutput(data, "stderr", alias);
     });
 
     proc.on("error", (err) => {
       settle(() => {
         reject(
           new Error(
-            `Failed to start yt-dlp: ${err.message}\n` +
+            `${jobPrefix(alias)} Failed to start yt-dlp: ${err.message}\n` +
               `Make sure yt-dlp is installed and available in PATH.\n` +
               `Install: pip install yt-dlp`,
           ),
@@ -143,7 +158,7 @@ function runYtDlp(args: string[], executablePath: string): Promise<void> {
 
     proc.on("exit", (code, signal) => {
       logger.debug(
-        `[yt-dlp] exit pid=${proc.pid ?? "unknown"} code=${code ?? "null"} signal=${signal ?? "null"}`,
+        `${jobPrefix(alias)} [yt-dlp] exit pid=${proc.pid ?? "unknown"} code=${code ?? "null"} signal=${signal ?? "null"}`,
       );
     });
 
@@ -156,7 +171,7 @@ function runYtDlp(args: string[], executablePath: string): Promise<void> {
         if (fatalMessage) {
           reject(
             new Error(
-              `yt-dlp reported that live chat subtitles are unavailable: ${fatalMessage}`,
+              `${jobPrefix(alias)} yt-dlp reported that live chat subtitles are unavailable: ${fatalMessage}`,
             ),
           );
           return;
@@ -167,7 +182,7 @@ function runYtDlp(args: string[], executablePath: string): Promise<void> {
         } else {
           reject(
             new Error(
-              `yt-dlp exited with code ${code}. Check yt-dlp output above for details.`,
+              `${jobPrefix(alias)} yt-dlp exited with code ${code}. Check yt-dlp output above for details.`,
             ),
           );
         }
@@ -176,14 +191,14 @@ function runYtDlp(args: string[], executablePath: string): Promise<void> {
 
     timeoutHandle = setTimeout(() => {
       logger.warn(
-        `[yt-dlp] timeout reached pid=${proc.pid ?? "unknown"}, terminating child process`,
+        `${jobPrefix(alias)} [yt-dlp] timeout reached pid=${proc.pid ?? "unknown"}, terminating child process`,
       );
 
       proc.kill("SIGKILL");
       settle(() => {
         reject(
           new Error(
-            `yt-dlp timed out after ${Math.round(timeoutMs / 1000)}s while downloading live chat.`,
+            `${jobPrefix(alias)} yt-dlp timed out after ${Math.round(timeoutMs / 1000)}s while downloading live chat.`,
           ),
         );
       });
@@ -244,6 +259,7 @@ function createRunOutputDir(outputDir: string): string {
 async function parseChatFile(
   filePath: string,
   config: AppConfig,
+  alias?: string,
 ): Promise<WeightedEvent[]> {
   const events: WeightedEvent[] = [];
   const input = fs.createReadStream(filePath, { encoding: "utf8" });
@@ -305,11 +321,16 @@ async function parseChatFile(
     input.close();
   }
 
+  if (alias) {
+    logger.debug(`[${alias}] parsed live chat file entries: ${events.length}`);
+  }
+
   return events;
 }
 
 export async function fetchLiveChat(
   config: AppConfig,
+  alias?: string,
 ): Promise<WeightedEvent[]> {
   const { executablePath, outputDir } = config.ytdlp;
 
@@ -319,23 +340,25 @@ export async function fetchLiveChat(
   const outputTemplate = path.join(runOutputDir, "%(id)s.%(ext)s");
   const args = buildArgs(config, outputTemplate);
 
-  logger.info(`Downloading live chat via yt-dlp...`);
-  logger.info(`Video: ${config.videoUrl}`);
-  logger.info(`Auth mode: ${config.auth.mode}`);
+  const prefix = jobPrefix(alias);
+
+  logger.info(`${prefix} Downloading live chat via yt-dlp...`);
+  logger.info(`${prefix} Video: ${config.videoUrl}`);
+  logger.info(`${prefix} Auth mode: ${config.auth.mode}`);
 
   try {
-    await runYtDlp(args, executablePath);
+    await runYtDlp(args, executablePath, alias);
 
     const chatFile = findChatFile(runOutputDir);
-    logger.info(`Parsing: ${chatFile}`);
+    logger.info(`${prefix} Parsing: ${chatFile}`);
 
     try {
-      const events = await parseChatFile(chatFile, config);
-      logger.info(`Parsed ${events.length} weighted events.`);
+      const events = await parseChatFile(chatFile, config, alias);
+      logger.info(`${prefix} Parsed ${events.length} weighted events.`);
 
       if (events.length === 0) {
         throw new Error(
-          "No comments parsed. The live chat replay may be empty or unsupported.",
+          `${prefix} No comments parsed. The live chat replay may be empty or unsupported.`,
         );
       }
 
@@ -344,11 +367,11 @@ export async function fetchLiveChat(
       try {
         if (fs.existsSync(chatFile)) {
           fs.unlinkSync(chatFile);
-          logger.info(`Deleted raw chat file: ${chatFile}`);
+          logger.info(`${prefix} Deleted raw chat file: ${chatFile}`);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        logger.debug(`Failed to delete raw chat file: ${message}`);
+        logger.debug(`${prefix} Failed to delete raw chat file: ${message}`);
       }
     }
   } finally {
@@ -356,7 +379,7 @@ export async function fetchLiveChat(
       fs.rmSync(runOutputDir, { recursive: true, force: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      logger.debug(`Failed to remove run output dir: ${message}`);
+      logger.debug(`${prefix} Failed to remove run output dir: ${message}`);
     }
   }
 }

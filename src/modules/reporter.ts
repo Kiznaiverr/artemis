@@ -34,11 +34,14 @@ function buildTable(clips: ClipRange[], videoUrl: string): string {
 export async function report(
   clips: ClipRange[],
   config: AppConfig,
+  alias?: string,
 ): Promise<void> {
   const outputDir = path.resolve(config.output.dir);
   await fs.mkdir(outputDir, { recursive: true });
 
-  logger.info(`writing report for ${clips.length} peaks`);
+  const prefix = alias ? `[${alias}]` : "[job]";
+
+  logger.info(`${prefix} writing report for ${clips.length} peaks`);
 
   console.log(buildTable(clips, config.videoUrl));
 
@@ -72,5 +75,5 @@ export async function report(
     "utf8",
   );
 
-  logger.debug(`report written to ${outputPath}`);
+  logger.debug(`${prefix} report written to ${outputPath}`);
 }

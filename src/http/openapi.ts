@@ -68,6 +68,7 @@ export const openApiSpec = {
                   success: true,
                   data: {
                     jobId: "job-123",
+                    alias: "J1",
                     status: "running",
                     progress: {
                       stage: "downloading",
@@ -114,6 +115,7 @@ export const openApiSpec = {
                   success: true,
                   data: {
                     jobId: "job-123",
+                    alias: "J1",
                     outputId: "job-123.json",
                     videoUrl: "https://www.youtube.com/watch?v=yPfOVlwlEJQ",
                     generatedAt: "2026-05-21T12:00:00.000Z",
@@ -190,9 +192,14 @@ export const openApiSpec = {
           success: { type: "boolean", enum: [true] },
           data: {
             type: "object",
-            required: ["jobId", "status", "checkUrl", "resultUrl"],
+            required: ["jobId", "alias", "status", "checkUrl", "resultUrl"],
             properties: {
               jobId: { type: "string", example: "job-123" },
+              alias: {
+                type: "string",
+                example: "J1",
+                description: "Short label used in logs and job status responses.",
+              },
               status: { type: "string", enum: ["queued"], example: "queued" },
               checkUrl: { type: "string", example: "/peaks/job-123" },
               resultUrl: { type: "string", example: "/peaks/job-123/result" },
@@ -207,9 +214,14 @@ export const openApiSpec = {
           success: { type: "boolean", enum: [true] },
           data: {
             type: "object",
-            required: ["jobId", "status", "progress"],
+            required: ["jobId", "alias", "status", "progress"],
             properties: {
               jobId: { type: "string", example: "job-123" },
+              alias: {
+                type: "string",
+                example: "J1",
+                description: "Short label used in logs and job status responses.",
+              },
               status: {
                 type: "string",
                 enum: ["queued", "running", "done", "failed"],

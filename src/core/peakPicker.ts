@@ -35,12 +35,15 @@ function toSeconds(ms: number): number {
 export function pickPeaks(
   series: TimeSeries[],
   config: AppConfig,
+  alias?: string,
 ): ClipRange[] {
   if (series.length < 3) {
     return [];
   }
 
-  logger.info(`picking peaks from ${series.length} normalized points`);
+  const prefix = alias ? `[${alias}]` : "[job]";
+
+  logger.info(`${prefix} picking peaks from ${series.length} normalized points`);
 
   const candidates = series
     .filter((_, index) => isLocalMaximum(series, index))
@@ -53,7 +56,7 @@ export function pickPeaks(
     (left, right) => right.normalizedScore - left.normalizedScore,
   );
 
-  logger.debug(`local maxima candidates: ${candidates.length}`);
+  logger.debug(`${prefix} local maxima candidates: ${candidates.length}`);
 
   const accepted: PeakCandidate[] = [];
   const minGapMs = config.peak.minGapSeconds * 1000;
@@ -67,7 +70,7 @@ export function pickPeaks(
     if (canAccept(candidate, accepted, minGapMs)) {
       accepted.push(candidate);
       logger.debug(
-        `accepted peak at ${candidate.timestampMs} with score ${candidate.normalizedScore.toFixed(2)}`,
+        `${prefix} accepted peak at ${candidate.timestampMs} with score ${candidate.normalizedScore.toFixed(2)}`,
       );
     }
   }

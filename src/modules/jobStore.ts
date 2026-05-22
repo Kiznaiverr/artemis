@@ -7,10 +7,15 @@ const JOB_TTL_MS = 60 * 60 * 1000;
 const JOB_RESULTS_DIR = path.resolve("output/jobs");
 const CLEANUP_INTERVAL_MS = 60 * 1000;
 
-type JobHandler = (config: AppConfig, jobId: string) => Promise<JobResult>;
+type JobHandler = (
+  config: AppConfig,
+  jobId: string,
+  alias: string,
+) => Promise<JobResult>;
 
 interface QueuedJob {
   jobId: string;
+  alias: string;
   config: AppConfig;
   handler: JobHandler;
 }
@@ -19,19 +24,27 @@ const jobs = new Map<string, JobRecord>();
 const queue: QueuedJob[] = [];
 let isWorkerRunning = false;
 let cleanupTimer: NodeJS.Timeout | undefined;
+let nextJobAliasNumber = 1;
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+function createJobAlias(): string {
+  const alias = `J${nextJobAliasNumber}`;
+  nextJobAliasNumber += 1;
+  return alias;
 }
 
 function buildResultPath(jobId: string): string {
   return path.join(JOB_RESULTS_DIR, `${jobId}.json`);
 }
 
-function buildRecord(jobId: string): JobRecord {
+function buildRecord(jobId: string, alias: string): JobRecord {
   const createdAt = nowIso();
   return {
     jobId,
+    alias,
     status: "queued",
     createdAt,
     updatedAt: createdAt,
@@ -131,7 +144,7 @@ async function drainQueue(): Promise<void> {
       updateRecord(next.jobId, "running");
 
       try {
-        const result = await next.handler(next.config, next.jobId);
+        const result = await next.handler(next.config, next.jobId, next.alias);
         const saved = saveRecordResult(next.jobId, result);
         if (!saved) {
           continue;
@@ -151,11 +164,13 @@ export function enqueueJob(
   config: AppConfig,
   handler: JobHandler,
 ): JobRecord {
-  jobs.set(jobId, buildRecord(jobId));
+  const alias = createJobAlias();
+  jobs.set(jobId, buildRecord(jobId, alias));
   startJobCleanupTimer();
 
   queue.push({
     jobId,
+    alias,
     config,
     handler,
   });

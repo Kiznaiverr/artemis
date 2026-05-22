@@ -6,20 +6,27 @@ import { pickPeaks } from "../core/peakPicker";
 import { fetchLiveChat } from "./fetcher";
 import { logger } from "../utils/logger";
 
+function jobPrefix(alias?: string): string {
+  return alias ? `[${alias}]` : "[job]";
+}
+
 export async function runPeakPipeline(
   config: AppConfig,
   jobId: string,
+  alias?: string,
 ): Promise<JobResult> {
-  logger.info(`starting job: ${jobId}`);
+  const prefix = jobPrefix(alias);
 
-  const events = await fetchLiveChat(config);
+  logger.info(`${prefix} starting job`);
 
-  const series = buildTimeSeries(events, config);
+  const events = await fetchLiveChat(config, alias);
 
-  const normalizedSeries = normalize(series, config);
+  const series = buildTimeSeries(events, config, alias);
 
-  const clips = pickPeaks(normalizedSeries, config);
-  logger.info(`selected peaks: ${clips.length}`);
+  const normalizedSeries = normalize(series, config, alias);
+
+  const clips = pickPeaks(normalizedSeries, config, alias);
+  logger.info(`${prefix} selected peaks: ${clips.length}`);
 
   return {
     jobId,

@@ -147,6 +147,7 @@ export function createApp() {
         response,
         {
           jobId: record.jobId,
+          alias: record.alias,
           status: record.status,
           checkUrl: `/peaks/${record.jobId}`,
           resultUrl: `/peaks/${record.jobId}/result`,
@@ -168,6 +169,7 @@ export function createApp() {
 
       const payload: JsonResponse = {
         jobId: record.jobId,
+        alias: record.alias,
         status: record.status,
         progress: getJobProgress(record),
       };
