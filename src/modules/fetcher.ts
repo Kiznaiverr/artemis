@@ -248,6 +248,8 @@ function buildTitleArgs(config: AppConfig): string[] {
     args.push('--js-runtimes', config.ytdlp.jsRuntime);
   }
 
+  args.push('--remote-components', 'ejs:github');
+
   applyAuthArgs(config, args);
 
   return args;
