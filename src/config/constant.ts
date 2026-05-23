@@ -125,7 +125,7 @@ export const config: AppConfig = {
         getEnvString("SUMOPOD_API_KEY", ""),
       ),
       model: getEnvString("SUMOPOD_MODEL", "deepseek-v4-flash"),
-      baseUrl: getEnvString("SUMOPOD_BASE_URL", "https://api.sumopod.com/v1"),
+      baseUrl: getEnvString("SUMOPOD_BASE_URL", "https://ai.sumopod.com/v1"),
     },
   },
   output: {

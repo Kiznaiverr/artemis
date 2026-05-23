@@ -8,7 +8,7 @@ export interface SumopodConfig {
 }
 
 function normalizeBaseUrl(value?: string): string {
-  return value?.trim() || "https://api.sumopod.com/v1";
+  return value?.trim() || "https://ai.sumopod.com/v1";
 }
 
 function formatJsonValue(value: unknown): string {
