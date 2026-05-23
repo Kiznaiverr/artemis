@@ -1,23 +1,16 @@
-import fs from "fs";
-import path from "path";
-import readline from "readline";
-import { spawn } from "child_process";
-import { AppConfig } from "../types/config.types";
-import {
-  LiveChatData,
-  LiveChatRawEntry,
-  RawComment,
-  WeightedEvent,
-} from "../types/comment.types";
-import { logger } from "../utils/logger";
-import { scoreComment } from "./parser";
-import { loadBestSubtitleSegments } from "../ai/subtitleParser";
+import fs from 'fs';
+import path from 'path';
+import readline from 'readline';
+import { spawn } from 'child_process';
+import { AppConfig } from '../types/config.types';
+import { LiveChatData, LiveChatRawEntry, RawComment, WeightedEvent } from '../types/comment.types';
+import { logger } from '../utils/logger';
+import { scoreComment } from './parser';
+import { loadBestSubtitleSegments } from '../ai/subtitleParser';
+import { getPositiveEnvNumber } from '../config/env';
 
 const PROGRESS_LOG_INTERVAL_MS = 5000;
 const DEFAULT_YTDLP_TIMEOUT_MS = 5 * 60 * 1000;
-
-let lastProgressSummary = "";
-let lastProgressLoggedAt = 0;
 
 const FATAL_YTDLP_PATTERNS = [
   /there are no subtitles for the requested languages/i,
@@ -34,17 +27,17 @@ type ProgressLogState = {
 };
 
 function normalizeProgressLine(line: string): string {
-  return line.replace(/\s+/g, " ").trim();
+  return line.replace(/\s+/g, ' ').trim();
 }
 
 function jobPrefix(alias?: string): string {
-  return alias ? `[${alias}]` : "[job]";
+  return alias ? `[${alias}]` : '[job]';
 }
 
 function shouldLogProgressLine(line: string, state: ProgressLogState): boolean {
   const now = Date.now();
 
-  if (line.includes("Destination:") || line.includes("Downloading live chat")) {
+  if (line.includes('Destination:') || line.includes('Downloading live chat')) {
     state.lastProgressSummary = normalizeProgressLine(line);
     state.lastProgressLoggedAt = now;
     return true;
@@ -64,25 +57,23 @@ function shouldLogProgressLine(line: string, state: ProgressLogState): boolean {
 
 function logYtDlpOutput(
   chunk: Buffer,
-  source: "stdout" | "stderr",
+  source: 'stdout' | 'stderr',
   alias?: string,
   state: ProgressLogState = {
-    lastProgressSummary: "",
+    lastProgressSummary: '',
     lastProgressLoggedAt: 0,
   },
 ): void {
-  const text = chunk.toString("utf8");
+  const text = chunk.toString('utf8');
   const lines = text.split(/\r?\n|\r/).map((line) => line.trim());
   const prefix = jobPrefix(alias);
 
   for (const line of lines) {
     if (!line) continue;
 
-    if (line.includes("[download]") || line.includes("[info]")) {
+    if (line.includes('[download]') || line.includes('[info]')) {
       if (shouldLogProgressLine(line, state)) {
-        logger.debug(
-          `${prefix} [yt-dlp:${source}] ${state.lastProgressSummary}`,
-        );
+        logger.debug(`${prefix} [yt-dlp:${source}] ${state.lastProgressSummary}`);
       }
       continue;
     }
@@ -107,39 +98,25 @@ function detectFatalYtDlpError(output: string): string | null {
 }
 
 function getYtDlpTimeoutMs(): number {
-  const rawTimeout = process.env.YTDLP_TIMEOUT_MS;
-  if (!rawTimeout || rawTimeout.trim() === "") {
-    return DEFAULT_YTDLP_TIMEOUT_MS;
-  }
-
-  const parsed = Number(rawTimeout);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return DEFAULT_YTDLP_TIMEOUT_MS;
-  }
-
-  return parsed;
+  return getPositiveEnvNumber('YTDLP_TIMEOUT_MS', DEFAULT_YTDLP_TIMEOUT_MS);
 }
 
-function runYtDlp(
-  args: string[],
-  executablePath: string,
-  alias?: string,
-): Promise<void> {
+function runYtDlp(args: string[], executablePath: string, alias?: string): Promise<void> {
   const timeoutMs = getYtDlpTimeoutMs();
   const progressState: ProgressLogState = {
-    lastProgressSummary: "",
+    lastProgressSummary: '',
     lastProgressLoggedAt: 0,
   };
 
   return new Promise((resolve, reject) => {
     const proc = spawn(executablePath, args, {
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    let stdoutBuffer = "";
-    let stderrBuffer = "";
+    let stdoutBuffer = '';
+    let stderrBuffer = '';
     let finished = false;
-    let timeoutHandle: NodeJS.Timeout | undefined;
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
 
     const settle = (callback: () => void): void => {
       if (finished) {
@@ -153,21 +130,19 @@ function runYtDlp(
       callback();
     };
 
-    logger.debug(
-      `${jobPrefix(alias)} [yt-dlp] spawned pid=${proc.pid ?? "unknown"}`,
-    );
+    logger.debug(`${jobPrefix(alias)} [yt-dlp] spawned pid=${proc.pid ?? 'unknown'}`);
 
-    proc.stdout.on("data", (data: Buffer) => {
-      stdoutBuffer += data.toString("utf8");
-      logYtDlpOutput(data, "stdout", alias, progressState);
+    proc.stdout.on('data', (data: Buffer) => {
+      stdoutBuffer += data.toString('utf8');
+      logYtDlpOutput(data, 'stdout', alias, progressState);
     });
 
-    proc.stderr.on("data", (data: Buffer) => {
-      stderrBuffer += data.toString("utf8");
-      logYtDlpOutput(data, "stderr", alias, progressState);
+    proc.stderr.on('data', (data: Buffer) => {
+      stderrBuffer += data.toString('utf8');
+      logYtDlpOutput(data, 'stderr', alias, progressState);
     });
 
-    proc.on("error", (err) => {
+    proc.on('error', (err) => {
       settle(() => {
         reject(
           new Error(
@@ -179,16 +154,15 @@ function runYtDlp(
       });
     });
 
-    proc.on("exit", (code, signal) => {
+    proc.on('exit', (code, signal) => {
       logger.debug(
-        `${jobPrefix(alias)} [yt-dlp] exit pid=${proc.pid ?? "unknown"} code=${code ?? "null"} signal=${signal ?? "null"}`,
+        `${jobPrefix(alias)} [yt-dlp] exit pid=${proc.pid ?? 'unknown'} code=${code ?? 'null'} signal=${signal ?? 'null'}`,
       );
     });
 
-    proc.on("close", (code) => {
+    proc.on('close', (code) => {
       const fatalMessage =
-        detectFatalYtDlpError(stderrBuffer) ??
-        detectFatalYtDlpError(stdoutBuffer);
+        detectFatalYtDlpError(stderrBuffer) ?? detectFatalYtDlpError(stdoutBuffer);
 
       settle(() => {
         if (fatalMessage) {
@@ -214,10 +188,10 @@ function runYtDlp(
 
     timeoutHandle = setTimeout(() => {
       logger.warn(
-        `${jobPrefix(alias)} [yt-dlp] timeout reached pid=${proc.pid ?? "unknown"}, terminating child process`,
+        `${jobPrefix(alias)} [yt-dlp] timeout reached pid=${proc.pid ?? 'unknown'}, terminating child process`,
       );
 
-      proc.kill("SIGKILL");
+      proc.kill('SIGKILL');
       settle(() => {
         reject(
           new Error(
@@ -232,27 +206,27 @@ function runYtDlp(
 function buildBaseArgs(config: AppConfig, outputTemplate: string): string[] {
   const args: string[] = [
     config.videoUrl,
-    "--skip-download",
-    "--write-subs",
-    "--write-auto-subs",
-    "-o",
+    '--skip-download',
+    '--write-subs',
+    '--write-auto-subs',
+    '-o',
     outputTemplate,
   ];
 
   if (config.ytdlp.jsRuntime) {
-    args.push("--js-runtimes", config.ytdlp.jsRuntime);
+    args.push('--js-runtimes', config.ytdlp.jsRuntime);
   }
 
-  args.push("--remote-components", "ejs:github");
+  args.push('--remote-components', 'ejs:github');
 
-  if (config.auth.mode === "browser") {
-    args.push("--cookies-from-browser", config.auth.browser ?? "chrome");
-  } else if (config.auth.mode === "cookies-file") {
-    const cookiesFile = config.auth.cookiesFile ?? "./cookies.txt";
+  if (config.auth.mode === 'browser') {
+    args.push('--cookies-from-browser', config.auth.browser ?? 'chrome');
+  } else if (config.auth.mode === 'cookies-file') {
+    const cookiesFile = config.auth.cookiesFile ?? './cookies.txt';
     if (!fs.existsSync(cookiesFile)) {
       throw new Error(`cookies-file not found: ${cookiesFile}`);
     }
-    args.push("--cookies", cookiesFile);
+    args.push('--cookies', cookiesFile);
   }
 
   return args;
@@ -260,14 +234,12 @@ function buildBaseArgs(config: AppConfig, outputTemplate: string): string[] {
 
 function buildArgs(config: AppConfig, outputTemplate: string): string[] {
   const args = buildBaseArgs(config, outputTemplate);
-  args.splice(3, 0, "--sub-langs", "live_chat");
+  args.splice(3, 0, '--sub-langs', 'live_chat');
   return args;
 }
 
 function findChatFile(outputDir: string): string {
-  const files = fs
-    .readdirSync(outputDir)
-    .filter((file) => file.endsWith(".live_chat.json"));
+  const files = fs.readdirSync(outputDir).filter((file) => file.endsWith('.live_chat.json'));
 
   if (files.length === 0) {
     throw new Error(
@@ -287,7 +259,7 @@ function findChatFile(outputDir: string): string {
 }
 
 function createRunOutputDir(outputDir: string): string {
-  return fs.mkdtempSync(path.join(outputDir, "run-"));
+  return fs.mkdtempSync(path.join(outputDir, 'run-'));
 }
 
 async function parseChatFile(
@@ -297,7 +269,7 @@ async function parseChatFile(
 ): Promise<LiveChatData> {
   const events: WeightedEvent[] = [];
   const comments: RawComment[] = [];
-  const input = fs.createReadStream(filePath, { encoding: "utf8" });
+  const input = fs.createReadStream(filePath, { encoding: 'utf8' });
   const reader = readline.createInterface({
     input,
     crlfDelay: Infinity,
@@ -318,22 +290,19 @@ async function parseChatFile(
       const actions = entry.replayChatItemAction?.actions ?? [];
 
       for (const action of actions) {
-        const renderer =
-          action.addChatItemAction?.item?.liveChatTextMessageRenderer;
+        const renderer = action.addChatItemAction?.item?.liveChatTextMessageRenderer;
         if (!renderer) continue;
 
         const offsetMs = parseInt(
-          renderer.videoOffsetTimeMsec ??
-            entry.replayChatItemAction?.videoOffsetTimeMsec ??
-            "0",
+          renderer.videoOffsetTimeMsec ?? entry.replayChatItemAction?.videoOffsetTimeMsec ?? '0',
           10,
         );
 
         if (Number.isNaN(offsetMs) || offsetMs < 0) continue;
 
         const text = (renderer.message?.runs ?? [])
-          .map((run) => run.text ?? "")
-          .join("")
+          .map((run) => run.text ?? '')
+          .join('')
           .trim();
 
         if (!text) continue;
@@ -370,16 +339,13 @@ async function parseChatFile(
   return { events, comments };
 }
 
-export async function fetchLiveChat(
-  config: AppConfig,
-  alias?: string,
-): Promise<LiveChatData> {
+export async function fetchLiveChat(config: AppConfig, alias?: string): Promise<LiveChatData> {
   const { executablePath, outputDir } = config.ytdlp;
 
   fs.mkdirSync(outputDir, { recursive: true });
   const runOutputDir = createRunOutputDir(outputDir);
 
-  const outputTemplate = path.join(runOutputDir, "%(id)s.%(ext)s");
+  const outputTemplate = path.join(runOutputDir, '%(id)s.%(ext)s');
   const args = buildArgs(config, outputTemplate);
 
   const prefix = jobPrefix(alias);
@@ -396,10 +362,7 @@ export async function fetchLiveChat(
 
     try {
       const data = await parseChatFile(chatFile, config, alias);
-      data.subtitleSegments = await loadBestSubtitleSegments(
-        runOutputDir,
-        alias,
-      );
+      data.subtitleSegments = await loadBestSubtitleSegments(runOutputDir, alias);
       logger.info(
         `${prefix} Parsed comments=${data.comments.length} weighted=${data.events.length}.`,
       );

@@ -1,11 +1,11 @@
-import { AppConfig } from "../types/config.types";
-import { RawComment } from "../types/comment.types";
-import { ClipRange } from "../types/peak.types";
-import { createAiRanker } from "./client";
-import { buildPeakContextCandidates } from "./context";
-import { loadRankerPrompts } from "./promptLoader";
-import { PeakRankSelection, SubtitleSegment } from "./types";
-import { logger } from "../utils/logger";
+import { AppConfig } from '../types/config.types';
+import { RawComment } from '../types/comment.types';
+import { ClipRange } from '../types/peak.types';
+import { createAiRanker } from './client';
+import { buildPeakContextCandidates } from './context';
+import { loadRankerPrompts } from './promptLoader';
+import { PeakRankSelection, SubtitleSegment } from './types';
+import { logger } from '../utils/logger';
 
 function formatDebugJson(value: unknown): string {
   try {
@@ -16,12 +16,12 @@ function formatDebugJson(value: unknown): string {
 }
 
 function getAiProviderConfig(config: AppConfig): {
-  provider: AppConfig["ai"]["provider"];
+  provider: AppConfig['ai']['provider'];
   apiKey: string;
   model: string;
   baseUrl: string;
 } {
-  if (config.ai.provider === "sumopod") {
+  if (config.ai.provider === 'sumopod') {
     return {
       provider: config.ai.provider,
       apiKey: config.ai.sumopod.apiKey,
@@ -39,7 +39,7 @@ function getAiProviderConfig(config: AppConfig): {
 }
 
 function jobPrefix(alias?: string): string {
-  return alias ? `[${alias}]` : "[job]";
+  return alias ? `[${alias}]` : '[job]';
 }
 
 function remapPeakIndex(clip: ClipRange, peakIndex: number): ClipRange {
@@ -50,9 +50,7 @@ function remapPeakIndex(clip: ClipRange, peakIndex: number): ClipRange {
 }
 
 function fallbackTopClips(clips: ClipRange[], limit: number): ClipRange[] {
-  return clips
-    .slice(0, limit)
-    .map((clip, index) => remapPeakIndex(clip, index + 1));
+  return clips.slice(0, limit).map((clip, index) => remapPeakIndex(clip, index + 1));
 }
 
 function selectClipsByRank(
@@ -103,9 +101,7 @@ export async function rerankPeakClips(
   const aiConfig = getAiProviderConfig(config);
   const apiKey = aiConfig.apiKey.trim();
   if (!apiKey) {
-    logger.warn(
-      `${prefix} ${aiConfig.provider} API key missing, using heuristic peaks only`,
-    );
+    logger.warn(`${prefix} ${aiConfig.provider} API key missing, using heuristic peaks only`);
     return fallbackTopClips(clips, limit);
   }
 
@@ -113,7 +109,7 @@ export async function rerankPeakClips(
     const prompts = await loadRankerPrompts();
 
     // Tighten prompts with strict, unambiguous rules for the model.
-    const strictAddendum = `Strict rules:\n- Return JSON only, exactly matching the requested schema. Do not include any surrounding text, explanation, or markdown.\n- Return at most ${limit} items in the \"selected\" array. Do not return more.\n- Each selected item must include: integer \"candidateIndex\" (1-based index into the provided Candidates array), \"reason\" (short, <=140 chars), and \"score\" (number between 0 and 1).\n- Order \"selected\" from best to worst.\n- Do not add extra fields or nested objects.\n- Reasons must cite brief evidence from the candidate context (e.g. \"chat_count=12, caps=3, subtitle=\"wow\"\").\n- If unsure, prefer candidates with higher chat density and clearer escalation signals.\n- Do not hallucinate or invent facts not present in the provided comments/subtitle snippets.`;
+    const strictAddendum = `Strict rules:\n- Return JSON only, exactly matching the requested schema. Do not include any surrounding text, explanation, or markdown.\n- Return at most ${limit} items in the "selected" array. Do not return more.\n- Each selected item must include: integer "candidateIndex" (1-based index into the provided Candidates array), "reason" (short, <=140 chars), and "score" (number between 0 and 1).\n- Order "selected" from best to worst.\n- Do not add extra fields or nested objects.\n- Reasons must cite brief evidence from the candidate context (e.g. "chat_count=12, caps=3, subtitle="wow"").\n- If unsure, prefer candidates with higher chat density and clearer escalation signals.\n- Do not hallucinate or invent facts not present in the provided comments/subtitle snippets.`;
     const ranker = createAiRanker({
       provider: aiConfig.provider,
       apiKey,
@@ -153,9 +149,7 @@ export async function rerankPeakClips(
 
     const ranked = selectClipsByRank(clips, result.selected, limit);
     if (ranked.length === 0) {
-      logger.warn(
-        `${prefix} AI returned no valid selections, using heuristic peaks`,
-      );
+      logger.warn(`${prefix} AI returned no valid selections, using heuristic peaks`);
       return fallbackTopClips(clips, limit);
     }
 
@@ -163,9 +157,7 @@ export async function rerankPeakClips(
     return ranked;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    logger.warn(
-      `${prefix} AI rerank failed, using heuristic peaks: ${message}`,
-    );
+    logger.warn(`${prefix} AI rerank failed, using heuristic peaks: ${message}`);
     return fallbackTopClips(clips, limit);
   }
 }

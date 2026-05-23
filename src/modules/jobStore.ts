@@ -1,17 +1,13 @@
-import fs from "fs";
-import path from "path";
-import { AppConfig } from "../types/config.types";
-import { JobRecord, JobResult, JobStatus } from "../types/job.types";
+import fs from 'fs';
+import path from 'path';
+import { AppConfig } from '../types/config.types';
+import { JobRecord, JobResult, JobStatus } from '../types/job.types';
 
 const JOB_TTL_MS = 60 * 60 * 1000;
-const JOB_RESULTS_DIR = path.resolve("output/jobs");
+const JOB_RESULTS_DIR = path.resolve('output/jobs');
 const CLEANUP_INTERVAL_MS = 60 * 1000;
 
-type JobHandler = (
-  config: AppConfig,
-  jobId: string,
-  alias: string,
-) => Promise<JobResult>;
+type JobHandler = (config: AppConfig, jobId: string, alias: string) => Promise<JobResult>;
 
 interface QueuedJob {
   jobId: string;
@@ -23,7 +19,7 @@ interface QueuedJob {
 const jobs = new Map<string, JobRecord>();
 const queue: QueuedJob[] = [];
 let isWorkerRunning = false;
-let cleanupTimer: NodeJS.Timeout | undefined;
+let cleanupTimer: ReturnType<typeof setInterval> | undefined;
 let nextJobAliasNumber = 1;
 
 function nowIso(): string {
@@ -45,7 +41,7 @@ function buildRecord(jobId: string, alias: string): JobRecord {
   return {
     jobId,
     alias,
-    status: "queued",
+    status: 'queued',
     createdAt,
     updatedAt: createdAt,
     expiresAt: new Date(Date.now() + JOB_TTL_MS).toISOString(),
@@ -55,7 +51,7 @@ function buildRecord(jobId: string, alias: string): JobRecord {
 
 function writeResultFile(resultPath: string, payload: JobResult): void {
   fs.mkdirSync(path.dirname(resultPath), { recursive: true });
-  fs.writeFileSync(resultPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  fs.writeFileSync(resultPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
 }
 
 function deleteResultFile(resultPath: string): void {
@@ -77,24 +73,21 @@ function updateRecord(jobId: string, status: JobStatus, error?: string): void {
   }
 }
 
-function saveRecordResult(
-  jobId: string,
-  result: JobResult,
-): JobRecord | undefined {
+function saveRecordResult(jobId: string, result: JobResult): JobRecord | undefined {
   const record = jobs.get(jobId);
   if (!record) {
     return undefined;
   }
 
   record.result = result;
-  record.status = "done";
+  record.status = 'done';
   record.updatedAt = nowIso();
   writeResultFile(record.resultPath, result);
   return record;
 }
 
 function failRecord(jobId: string, error: string): void {
-  updateRecord(jobId, "failed", error);
+  updateRecord(jobId, 'failed', error);
 }
 
 export function getJobRecord(jobId: string): JobRecord | undefined {
@@ -141,7 +134,7 @@ async function drainQueue(): Promise<void> {
         continue;
       }
 
-      updateRecord(next.jobId, "running");
+      updateRecord(next.jobId, 'running');
 
       try {
         const result = await next.handler(next.config, next.jobId, next.alias);
@@ -159,11 +152,7 @@ async function drainQueue(): Promise<void> {
   }
 }
 
-export function enqueueJob(
-  jobId: string,
-  config: AppConfig,
-  handler: JobHandler,
-): JobRecord {
+export function enqueueJob(jobId: string, config: AppConfig, handler: JobHandler): JobRecord {
   const alias = createJobAlias();
   jobs.set(jobId, buildRecord(jobId, alias));
   startJobCleanupTimer();

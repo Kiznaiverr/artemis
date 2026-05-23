@@ -1,6 +1,7 @@
 # Context Rules
 
 Context limits:
+
 - Only use comment windows around each candidate peak.
 - Only use subtitle snippets inside the same peak window.
 - Never send the full subtitle file.

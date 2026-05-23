@@ -1,6 +1,6 @@
-import { AppConfig } from "../types/config.types";
-import { TimeSeries } from "../types/peak.types";
-import { logger } from "../utils/logger";
+import { AppConfig } from '../types/config.types';
+import { TimeSeries } from '../types/peak.types';
+import { logger } from '../utils/logger';
 
 function mean(values: number[]): number {
   if (values.length === 0) {
@@ -12,7 +12,7 @@ function mean(values: number[]): number {
 }
 
 export function normalize(
-  series: Omit<TimeSeries, "normalizedScore">[],
+  series: Omit<TimeSeries, 'normalizedScore'>[],
   _config: AppConfig,
   alias?: string,
 ): TimeSeries[] {
@@ -23,7 +23,7 @@ export function normalize(
   const globalMean = mean(series.map((point) => point.rawScore));
   const baselineWindowMs = 5 * 60 * 1000;
 
-  const prefix = alias ? `[${alias}]` : "[job]";
+  const prefix = alias ? `[${alias}]` : '[job]';
 
   logger.info(`${prefix} normalizing ${series.length} series points`);
 
@@ -31,14 +31,11 @@ export function normalize(
     // Use a nearby baseline when enough windows are available.
     const neighboringScores = series
       .filter(
-        (candidate) =>
-          Math.abs(candidate.timestampMs - point.timestampMs) <=
-          baselineWindowMs,
+        (candidate) => Math.abs(candidate.timestampMs - point.timestampMs) <= baselineWindowMs,
       )
       .map((candidate) => candidate.rawScore);
 
-    const baseline =
-      neighboringScores.length >= 3 ? mean(neighboringScores) : globalMean;
+    const baseline = neighboringScores.length >= 3 ? mean(neighboringScores) : globalMean;
     const normalizedScore = baseline === 0 ? 0 : point.rawScore / baseline;
 
     // uncomment this for detailed normalization logs

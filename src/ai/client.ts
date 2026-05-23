@@ -1,7 +1,7 @@
-import { AiRanker } from "./types";
-import { OpenRouterRanker } from "./providers/openrouter";
-import { SumopodRanker } from "./providers/sumopod";
-import { AiProviderName } from "../types/config.types";
+import { AiRanker } from './types';
+import { OpenRouterRanker } from './providers/openrouter';
+import { SumopodRanker } from './providers/sumopod';
+import { AiProviderName } from '../types/config.types';
 
 export interface AiClientConfig {
   provider: AiProviderName;
@@ -11,7 +11,7 @@ export interface AiClientConfig {
 }
 
 export function createAiRanker(config: AiClientConfig): AiRanker {
-  if (config.provider === "openrouter") {
+  if (config.provider === 'openrouter') {
     return new OpenRouterRanker({
       apiKey: config.apiKey,
       model: config.model,

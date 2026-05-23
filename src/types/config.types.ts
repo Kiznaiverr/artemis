@@ -1,12 +1,6 @@
-export type AuthMode = "none" | "browser" | "cookies-file";
-export type AiProviderName = "openrouter" | "sumopod";
-export type BrowserName =
-  | "chrome"
-  | "firefox"
-  | "edge"
-  | "brave"
-  | "opera"
-  | "chromium";
+export type AuthMode = 'none' | 'browser' | 'cookies-file';
+export type AiProviderName = 'openrouter' | 'sumopod';
+export type BrowserName = 'chrome' | 'firefox' | 'edge' | 'brave' | 'opera' | 'chromium';
 
 export interface AppConfig {
   videoUrl: string;

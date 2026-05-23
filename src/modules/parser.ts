@@ -1,6 +1,6 @@
-import { AppConfig } from "../types/config.types";
-import { RawComment, WeightedEvent } from "../types/comment.types";
-import { logger } from "../utils/logger";
+import { AppConfig } from '../types/config.types';
+import { RawComment, WeightedEvent } from '../types/comment.types';
+import { logger } from '../utils/logger';
 
 function isUrlOnly(text: string): boolean {
   const urlPattern = /^(https?:\/\/|www\.)\S+$/i;
@@ -19,10 +19,7 @@ function clampScore(score: number): number {
   return Math.min(score, 4);
 }
 
-function scoreText(
-  text: string,
-  config: AppConfig,
-): number {
+function scoreText(text: string): number {
   let score = 1;
 
   if (hasAllCapsWord(text)) {
@@ -38,10 +35,7 @@ function scoreText(
   return clampScore(score);
 }
 
-export function scoreComment(
-  comment: RawComment,
-  config: AppConfig,
-): WeightedEvent | null {
+export function scoreComment(comment: RawComment, config: AppConfig): WeightedEvent | null {
   const text = comment.text.trim();
   if (text.length < config.filter.minLength) {
     return null;
@@ -53,7 +47,7 @@ export function scoreComment(
     return null;
   }
 
-  const score = scoreText(text, config);
+  const score = scoreText(text);
 
   return {
     timestampMs: comment.timestampMs,
@@ -61,18 +55,13 @@ export function scoreComment(
   };
 }
 
-export function parseComments(
-  comments: RawComment[],
-  config: AppConfig,
-): WeightedEvent[] {
+export function parseComments(comments: RawComment[], config: AppConfig): WeightedEvent[] {
   logger.info(`parsing comments: ${comments.length}`);
   const events = comments
     .map((comment) => scoreComment(comment, config))
     .filter((event): event is WeightedEvent => event !== null);
 
-  logger.info(
-    `parsed comments: ${comments.length}, accepted: ${events.length}`,
-  );
+  logger.info(`parsed comments: ${comments.length}, accepted: ${events.length}`);
 
   return events;
 }

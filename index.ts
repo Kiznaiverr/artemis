@@ -1,3 +1,5 @@
-import { startServer } from "./src/server";
+import 'dotenv/config';
+
+import { startServer } from './src/server';
 
 startServer();

@@ -1,4 +1,4 @@
-import { RawComment } from "../types/comment.types";
+import { RawComment } from '../types/comment.types';
 
 export interface SubtitleSegment {
   startMs: number;

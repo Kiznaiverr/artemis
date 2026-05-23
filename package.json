@@ -3,19 +3,32 @@
   "version": "1.0.0",
   "scripts": {
     "check:ytdlp": "yt-dlp --version",
-    "start": "ts-node index.ts",
+    "start": "node dist/index.js",
     "build": "tsc",
-    "dev": "tsx watch index.ts"
+    "dev": "tsx watch index.ts",
+    "lint": "eslint \"**/*.{ts,tsx,js,jsx}\" --max-warnings 0",
+    "lint:fix": "eslint \"**/*.{ts,tsx,js,jsx}\" --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "dependencies": {
     "@scalar/express-api-reference": "^0.9.16",
     "@types/express": "^5.0.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "openai": "^6.39.0",
     "tsx": "^4.22.3"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.4.0",
+    "prettier": "^3.8.3",
+    "@typescript-eslint/parser": "^8.59.4",
+    "@typescript-eslint/eslint-plugin": "^8.59.4",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.6.0"
   }
 }

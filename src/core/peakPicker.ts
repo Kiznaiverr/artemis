@@ -1,7 +1,7 @@
-import { AppConfig } from "../types/config.types";
-import { ClipRange, PeakCandidate, TimeSeries } from "../types/peak.types";
-import { formatMs } from "../utils/timeFormat";
-import { logger } from "../utils/logger";
+import { AppConfig } from '../types/config.types';
+import { ClipRange, PeakCandidate, TimeSeries } from '../types/peak.types';
+import { formatMs } from '../utils/timeFormat';
+import { logger } from '../utils/logger';
 
 function isLocalMaximum(series: TimeSeries[], index: number): boolean {
   if (index <= 0 || index >= series.length - 1) {
@@ -18,30 +18,20 @@ function isLocalMaximum(series: TimeSeries[], index: number): boolean {
   );
 }
 
-function canAccept(
-  candidate: PeakCandidate,
-  accepted: PeakCandidate[],
-  minGapMs: number,
-): boolean {
-  return accepted.every(
-    (peak) => Math.abs(peak.timestampMs - candidate.timestampMs) >= minGapMs,
-  );
+function canAccept(candidate: PeakCandidate, accepted: PeakCandidate[], minGapMs: number): boolean {
+  return accepted.every((peak) => Math.abs(peak.timestampMs - candidate.timestampMs) >= minGapMs);
 }
 
 function toSeconds(ms: number): number {
   return Math.floor(ms / 1000);
 }
 
-export function pickPeaks(
-  series: TimeSeries[],
-  config: AppConfig,
-  alias?: string,
-): ClipRange[] {
+export function pickPeaks(series: TimeSeries[], config: AppConfig, alias?: string): ClipRange[] {
   if (series.length < 3) {
     return [];
   }
 
-  const prefix = alias ? `[${alias}]` : "[job]";
+  const prefix = alias ? `[${alias}]` : '[job]';
 
   logger.info(`${prefix} picking peaks from ${series.length} normalized points`);
 
@@ -52,9 +42,7 @@ export function pickPeaks(
       normalizedScore: point.normalizedScore,
     }));
 
-  candidates.sort(
-    (left, right) => right.normalizedScore - left.normalizedScore,
-  );
+  candidates.sort((left, right) => right.normalizedScore - left.normalizedScore);
 
   logger.debug(`${prefix} local maxima candidates: ${candidates.length}`);
 
@@ -78,10 +66,7 @@ export function pickPeaks(
   accepted.sort((left, right) => left.timestampMs - right.timestampMs);
 
   return accepted.map((peak, index) => {
-    const startMs = Math.max(
-      0,
-      peak.timestampMs - config.clipPadding.before * 1000,
-    );
+    const startMs = Math.max(0, peak.timestampMs - config.clipPadding.before * 1000);
     const endMs = peak.timestampMs + config.clipPadding.after * 1000;
 
     return {

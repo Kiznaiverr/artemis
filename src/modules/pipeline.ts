@@ -1,14 +1,14 @@
-import { AppConfig } from "../types/config.types";
-import { JobResult } from "../types/job.types";
-import { buildTimeSeries } from "../core/window";
-import { normalize } from "../core/normalizer";
-import { pickPeaks } from "../core/peakPicker";
-import { fetchLiveChat } from "./fetcher";
-import { logger } from "../utils/logger";
-import { rerankPeakClips } from "../ai/peakRanker";
+import { AppConfig } from '../types/config.types';
+import { JobResult } from '../types/job.types';
+import { buildTimeSeries } from '../core/window';
+import { normalize } from '../core/normalizer';
+import { pickPeaks } from '../core/peakPicker';
+import { fetchLiveChat } from './fetcher';
+import { logger } from '../utils/logger';
+import { rerankPeakClips } from '../ai/peakRanker';
 
 function jobPrefix(alias?: string): string {
-  return alias ? `[${alias}]` : "[job]";
+  return alias ? `[${alias}]` : '[job]';
 }
 
 export async function runPeakPipeline(

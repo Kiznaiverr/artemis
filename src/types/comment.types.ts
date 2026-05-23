@@ -11,7 +11,7 @@ export interface WeightedEvent {
 export interface LiveChatData {
   events: WeightedEvent[];
   comments: RawComment[];
-  subtitleSegments?: import("../ai/types").SubtitleSegment[];
+  subtitleSegments?: import('../ai/types').SubtitleSegment[];
 }
 
 /**

@@ -1,11 +1,11 @@
-import fs from "fs/promises";
-import path from "path";
+import fs from 'fs/promises';
+import path from 'path';
 
-const COMMAND_DIR = path.resolve(process.cwd(), "src", "command");
+const COMMAND_DIR = path.resolve(process.cwd(), 'src', 'command');
 
 export async function loadCommandText(fileName: string): Promise<string> {
   const filePath = path.join(COMMAND_DIR, fileName);
-  return fs.readFile(filePath, "utf8");
+  return fs.readFile(filePath, 'utf8');
 }
 
 export async function loadRankerPrompts(): Promise<{
@@ -14,13 +14,12 @@ export async function loadRankerPrompts(): Promise<{
   contextRules: string;
   outputFormat: string;
 }> {
-  const [systemPrompt, taskPrompt, contextRules, outputFormat] =
-    await Promise.all([
-      loadCommandText("system.md"),
-      loadCommandText("ranker.md"),
-      loadCommandText("context-rules.md"),
-      loadCommandText("output-format.md"),
-    ]);
+  const [systemPrompt, taskPrompt, contextRules, outputFormat] = await Promise.all([
+    loadCommandText('system.md'),
+    loadCommandText('ranker.md'),
+    loadCommandText('context-rules.md'),
+    loadCommandText('output-format.md'),
+  ]);
 
   return {
     systemPrompt,

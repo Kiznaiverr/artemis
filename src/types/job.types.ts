@@ -1,6 +1,6 @@
-import { ClipRange } from "./peak.types";
+import { ClipRange } from './peak.types';
 
-export type JobStatus = "queued" | "running" | "done" | "failed";
+export type JobStatus = 'queued' | 'running' | 'done' | 'failed';
 
 export interface JobResult {
   jobId: string;
