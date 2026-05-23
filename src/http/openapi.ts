@@ -48,6 +48,40 @@ export const openApiSpec = {
         },
       },
     },
+    '/jobs/completed': {
+      get: {
+        summary: 'List completed jobs',
+        responses: {
+          '200': {
+            description: 'Completed jobs list',
+            content: {
+              'application/json': {
+                example: {
+                  success: true,
+                  data: {
+                    jobs: [
+                      {
+                        jobId: 'job-123',
+                        videoTitle: 'Sample Live Stream',
+                        videoUrl: 'https://www.youtube.com/watch?v=yPfOVlwlEJQ',
+                        generatedAt: '2026-05-21T12:00:00.000Z',
+                        clipsCount: 1,
+                        outputId: 'job-123.json',
+                        resultUrl: '/peaks/job-123/result',
+                        status: 'done',
+                      },
+                    ],
+                  },
+                },
+                schema: {
+                  $ref: '#/components/schemas/CompletedJobsResponse',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     '/peaks/{jobId}': {
       get: {
         summary: 'Check job progress',
@@ -69,6 +103,7 @@ export const openApiSpec = {
                   data: {
                     jobId: 'job-123',
                     alias: 'J1',
+                    videoTitle: 'Sample Live Stream',
                     status: 'running',
                     progress: {
                       stage: 'running',
@@ -115,6 +150,7 @@ export const openApiSpec = {
                   success: true,
                   data: {
                     jobId: 'job-123',
+                    videoTitle: 'Sample Live Stream',
                     alias: 'J1',
                     outputId: 'job-123.json',
                     videoUrl: 'https://www.youtube.com/watch?v=yPfOVlwlEJQ',
@@ -192,13 +228,17 @@ export const openApiSpec = {
           success: { type: 'boolean', enum: [true] },
           data: {
             type: 'object',
-            required: ['jobId', 'alias', 'status', 'checkUrl', 'resultUrl'],
+            required: ['jobId', 'alias', 'videoTitle', 'status', 'checkUrl', 'resultUrl'],
             properties: {
               jobId: { type: 'string', example: 'job-123' },
               alias: {
                 type: 'string',
                 example: 'J1',
                 description: 'Short label used in logs and job status responses.',
+              },
+              videoTitle: {
+                type: 'string',
+                example: 'Sample Live Stream',
               },
               status: { type: 'string', enum: ['queued'], example: 'queued' },
               checkUrl: { type: 'string', example: '/peaks/job-123' },
@@ -214,13 +254,17 @@ export const openApiSpec = {
           success: { type: 'boolean', enum: [true] },
           data: {
             type: 'object',
-            required: ['jobId', 'alias', 'status', 'progress'],
+            required: ['jobId', 'alias', 'videoTitle', 'status', 'progress'],
             properties: {
               jobId: { type: 'string', example: 'job-123' },
               alias: {
                 type: 'string',
                 example: 'J1',
                 description: 'Short label used in logs and job status responses.',
+              },
+              videoTitle: {
+                type: 'string',
+                example: 'Sample Live Stream',
               },
               status: {
                 type: 'string',
@@ -252,9 +296,21 @@ export const openApiSpec = {
           success: { type: 'boolean', enum: [true] },
           data: {
             type: 'object',
-            required: ['jobId', 'videoUrl', 'generatedAt', 'clips', 'output', 'outputId'],
+            required: [
+              'jobId',
+              'videoTitle',
+              'videoUrl',
+              'generatedAt',
+              'clips',
+              'output',
+              'outputId',
+            ],
             properties: {
               jobId: { type: 'string', example: 'job-123' },
+              videoTitle: {
+                type: 'string',
+                example: 'Sample Live Stream',
+              },
               outputId: { type: 'string', example: 'job-123.json' },
               videoUrl: {
                 type: 'string',
@@ -289,6 +345,51 @@ export const openApiSpec = {
                   topN: { type: 'integer', example: 5 },
                   windowSize: { type: 'integer', example: 30 },
                   minGapSeconds: { type: 'integer', example: 180 },
+                },
+              },
+            },
+          },
+        },
+      },
+      CompletedJobsResponse: {
+        type: 'object',
+        required: ['success', 'data'],
+        properties: {
+          success: { type: 'boolean', enum: [true] },
+          data: {
+            type: 'object',
+            required: ['jobs'],
+            properties: {
+              jobs: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  required: [
+                    'jobId',
+                    'videoTitle',
+                    'videoUrl',
+                    'generatedAt',
+                    'clipsCount',
+                    'outputId',
+                    'resultUrl',
+                    'status',
+                  ],
+                  properties: {
+                    jobId: { type: 'string', example: 'job-123' },
+                    videoTitle: { type: 'string', example: 'Sample Live Stream' },
+                    videoUrl: {
+                      type: 'string',
+                      example: 'https://www.youtube.com/watch?v=yPfOVlwlEJQ',
+                    },
+                    generatedAt: {
+                      type: 'string',
+                      example: '2026-05-21T12:00:00.000Z',
+                    },
+                    clipsCount: { type: 'integer', example: 1 },
+                    outputId: { type: 'string', example: 'job-123.json' },
+                    resultUrl: { type: 'string', example: '/peaks/job-123/result' },
+                    status: { type: 'string', enum: ['done'], example: 'done' },
+                  },
                 },
               },
             },

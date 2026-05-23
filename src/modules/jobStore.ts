@@ -1,17 +1,24 @@
 import fs from 'fs';
 import path from 'path';
 import { AppConfig } from '../types/config.types';
-import { JobRecord, JobResult, JobStatus } from '../types/job.types';
+import { CompletedJobSummary, JobRecord, JobResult, JobStatus } from '../types/job.types';
+import { buildJobResultUrl } from '../utils/jobLabel';
 
-const JOB_TTL_MS = 60 * 60 * 1000;
+const JOB_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 const JOB_RESULTS_DIR = path.resolve('output/jobs');
 const CLEANUP_INTERVAL_MS = 60 * 1000;
 
-type JobHandler = (config: AppConfig, jobId: string, alias: string) => Promise<JobResult>;
+type JobHandler = (
+  config: AppConfig,
+  jobId: string,
+  alias: string,
+  videoTitle: string,
+) => Promise<JobResult>;
 
 interface QueuedJob {
   jobId: string;
   alias: string;
+  videoTitle: string;
   config: AppConfig;
   handler: JobHandler;
 }
@@ -36,11 +43,12 @@ function buildResultPath(jobId: string): string {
   return path.join(JOB_RESULTS_DIR, `${jobId}.json`);
 }
 
-function buildRecord(jobId: string, alias: string): JobRecord {
+function buildRecord(jobId: string, alias: string, videoTitle: string): JobRecord {
   const createdAt = nowIso();
   return {
     jobId,
     alias,
+    videoTitle,
     status: 'queued',
     createdAt,
     updatedAt: createdAt,
@@ -79,6 +87,7 @@ function saveRecordResult(jobId: string, result: JobResult): JobRecord | undefin
     return undefined;
   }
 
+  record.videoTitle = result.videoTitle;
   record.result = result;
   record.status = 'done';
   record.updatedAt = nowIso();
@@ -92,6 +101,71 @@ function failRecord(jobId: string, error: string): void {
 
 export function getJobRecord(jobId: string): JobRecord | undefined {
   return jobs.get(jobId);
+}
+
+function buildCompletedJobSummary(result: JobResult, filePath: string): CompletedJobSummary {
+  return {
+    jobId: result.jobId,
+    videoTitle: result.videoTitle,
+    videoUrl: result.videoUrl,
+    generatedAt: result.generatedAt,
+    clipsCount: result.clips.length,
+    outputId: path.basename(filePath),
+    resultUrl: buildJobResultUrl(result.jobId),
+    status: 'done',
+  };
+}
+
+export function listCompletedJobs(): CompletedJobSummary[] {
+  if (!fs.existsSync(JOB_RESULTS_DIR)) {
+    return [];
+  }
+
+  const files = fs
+    .readdirSync(JOB_RESULTS_DIR)
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => {
+      const filePath = path.join(JOB_RESULTS_DIR, file);
+      const stat = fs.statSync(filePath);
+      return { filePath, mtimeMs: stat.mtimeMs };
+    })
+    .sort((left, right) => right.mtimeMs - left.mtimeMs);
+
+  const summaries: CompletedJobSummary[] = [];
+
+  for (const file of files) {
+    try {
+      const rawText = fs.readFileSync(file.filePath, 'utf8');
+      const result = JSON.parse(rawText) as JobResult;
+      const videoTitle =
+        typeof result.videoTitle === 'string' && result.videoTitle.trim()
+          ? result.videoTitle.trim()
+          : 'Unknown title';
+
+      if (
+        !result.jobId ||
+        !result.videoUrl ||
+        !result.generatedAt ||
+        !Array.isArray(result.clips)
+      ) {
+        continue;
+      }
+
+      summaries.push(
+        buildCompletedJobSummary(
+          {
+            ...result,
+            videoTitle,
+          },
+          file.filePath,
+        ),
+      );
+    } catch {
+      continue;
+    }
+  }
+
+  return summaries;
 }
 
 export function cleanupExpiredJobs(): void {
@@ -137,7 +211,7 @@ async function drainQueue(): Promise<void> {
       updateRecord(next.jobId, 'running');
 
       try {
-        const result = await next.handler(next.config, next.jobId, next.alias);
+        const result = await next.handler(next.config, next.jobId, next.alias, next.videoTitle);
         const saved = saveRecordResult(next.jobId, result);
         if (!saved) {
           continue;
@@ -152,14 +226,20 @@ async function drainQueue(): Promise<void> {
   }
 }
 
-export function enqueueJob(jobId: string, config: AppConfig, handler: JobHandler): JobRecord {
+export function enqueueJob(
+  jobId: string,
+  config: AppConfig,
+  videoTitle: string,
+  handler: JobHandler,
+): JobRecord {
   const alias = createJobAlias();
-  jobs.set(jobId, buildRecord(jobId, alias));
+  jobs.set(jobId, buildRecord(jobId, alias, videoTitle));
   startJobCleanupTimer();
 
   queue.push({
     jobId,
     alias,
+    videoTitle,
     config,
     handler,
   });

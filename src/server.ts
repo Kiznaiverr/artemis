@@ -7,10 +7,21 @@ import { ApiError, isApiError } from './http/apiError';
 import { sendError, sendSuccess } from './http/response';
 import { openApiSpec } from './http/openapi';
 import { buildConfigFromBody } from './modules/configBuilder';
-import { enqueueJob, getJobRecord, startJobCleanupTimer } from './modules/jobStore';
+import {
+  enqueueJob,
+  getJobRecord,
+  listCompletedJobs,
+  startJobCleanupTimer,
+} from './modules/jobStore';
+import { loadVideoTitle } from './modules/fetcher';
 import { runPeakPipeline } from './modules/pipeline';
 import { httpLogger, logger } from './utils/logger';
-import { buildJobCheckUrl, buildJobOutputId, buildJobResultUrl } from './utils/jobLabel';
+import {
+  buildCompletedJobsUrl,
+  buildJobCheckUrl,
+  buildJobOutputId,
+  buildJobResultUrl,
+} from './utils/jobLabel';
 
 type JsonResponse = Record<string, unknown>;
 
@@ -96,13 +107,15 @@ export function createApp() {
     handleAsyncRoute(async (request, response) => {
       const jobId = `job-${randomUUID()}`;
       const jobConfig = buildConfigFromBody(baseConfig, request.body);
-      const record = enqueueJob(jobId, jobConfig, runPeakPipeline);
+      const videoTitle = await loadVideoTitle(jobConfig);
+      const record = enqueueJob(jobId, jobConfig, videoTitle, runPeakPipeline);
 
       sendSuccess(
         response,
         {
           jobId: record.jobId,
           alias: record.alias,
+          videoTitle: record.videoTitle,
           status: record.status,
           checkUrl: buildJobCheckUrl(record.jobId),
           resultUrl: buildJobResultUrl(record.jobId),
@@ -125,6 +138,7 @@ export function createApp() {
       const payload: JsonResponse = {
         jobId: record.jobId,
         alias: record.alias,
+        videoTitle: record.videoTitle,
         status: record.status,
         progress: getJobProgress(record),
       };
@@ -163,6 +177,17 @@ export function createApp() {
       sendSuccess(response, {
         ...record.result,
         outputId: buildJobOutputId(record.jobId),
+      });
+    }),
+  );
+
+  app.get(
+    buildCompletedJobsUrl(),
+    handleAsyncRoute(async (_request, response) => {
+      const jobs = listCompletedJobs();
+
+      sendSuccess(response, {
+        jobs,
       });
     }),
   );

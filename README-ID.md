@@ -6,6 +6,8 @@ Ringkasan
 
 - Mengajukan pekerjaan analisis lewat `POST /peaks` dan menerima `jobId` secara instan.
 - Memeriksa progres pekerjaan dengan `GET /peaks/:jobId` dan mengambil hasil akhir di `GET /peaks/:jobId/result`.
+- Melihat daftar job selesai lewat `GET /jobs/completed`, yang dibaca dari file JSON di `output/jobs`.
+- Setiap response job membawa `videoTitle` supaya judul video bisa langsung dipakai oleh client.
 - Menggunakan analisis jendela waktu bergulir untuk memberi skor aktivitas chat, lalu menerapkan heuristik dan opsi peringkat ulang AI untuk memilih klip terbaik.
 - Spesifikasi OpenAPI tersedia di `/openapi.json` dan playground interaktif di `/docs`.
 
@@ -19,7 +21,9 @@ npm install
 
 2. Konfigurasikan variabel lingkungan (lihat `.env.example`). Variabel penting termasuk kunci API untuk penyedia AI dan nilai tuning seperti `TOP_N`, `WINDOW_SIZE`, dan `WINDOW_STEP`.
 
-3. Jalankan dalam mode pengembangan:
+3. Hasil job disimpan selama 3 hari sebelum proses cleanup menghapusnya dari `output/jobs`.
+
+4. Jalankan dalam mode pengembangan:
 
 ```bash
 npm run dev
@@ -52,6 +56,7 @@ Catatan perilaku
 
 - API mengembalikan envelope JSON konsisten untuk kasus sukses dan error.
 - Parameter tuning dibaca dari variabel lingkungan dan divalidasi saat pembuatan pekerjaan.
+- Job selesai dibaca dari filesystem, jadi `GET /jobs/completed` hanya menampilkan job yang file hasilnya masih ada.
 - Peringkat ulang AI bersifat opsional dan memerlukan kunci API penyedia; jika tidak ada, layanan kembali menggunakan heuristik.
 
 Kontribusi

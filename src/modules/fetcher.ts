@@ -27,6 +27,11 @@ type ProgressLogState = {
   lastProgressLoggedAt: number;
 };
 
+type YtDlpRunResult = {
+  stdout: string;
+  stderr: string;
+};
+
 function normalizeProgressLine(line: string): string {
   return line.replace(/\s+/g, ' ').trim();
 }
@@ -98,7 +103,7 @@ function getYtDlpTimeoutMs(): number {
   return getPositiveEnvNumber('YTDLP_TIMEOUT_MS', DEFAULT_YTDLP_TIMEOUT_MS);
 }
 
-function runYtDlp(args: string[], executablePath: string, alias?: string): Promise<void> {
+function runYtDlp(args: string[], executablePath: string, alias?: string): Promise<YtDlpRunResult> {
   const timeoutMs = getYtDlpTimeoutMs();
   const progressState: ProgressLogState = {
     lastProgressSummary: '',
@@ -172,7 +177,10 @@ function runYtDlp(args: string[], executablePath: string, alias?: string): Promi
         }
 
         if (code === 0) {
-          resolve();
+          resolve({
+            stdout: stdoutBuffer,
+            stderr: stderrBuffer,
+          });
         } else {
           reject(
             new Error(
@@ -200,6 +208,18 @@ function runYtDlp(args: string[], executablePath: string, alias?: string): Promi
   });
 }
 
+function applyAuthArgs(config: AppConfig, args: string[]): void {
+  if (config.auth.mode === 'browser') {
+    args.push('--cookies-from-browser', config.auth.browser ?? 'chrome');
+  } else if (config.auth.mode === 'cookies-file') {
+    const cookiesFile = config.auth.cookiesFile ?? './cookies.txt';
+    if (!fs.existsSync(cookiesFile)) {
+      throw new Error(`cookies-file not found: ${cookiesFile}`);
+    }
+    args.push('--cookies', cookiesFile);
+  }
+}
+
 function buildBaseArgs(config: AppConfig, outputTemplate: string): string[] {
   const args: string[] = [
     config.videoUrl,
@@ -216,15 +236,19 @@ function buildBaseArgs(config: AppConfig, outputTemplate: string): string[] {
 
   args.push('--remote-components', 'ejs:github');
 
-  if (config.auth.mode === 'browser') {
-    args.push('--cookies-from-browser', config.auth.browser ?? 'chrome');
-  } else if (config.auth.mode === 'cookies-file') {
-    const cookiesFile = config.auth.cookiesFile ?? './cookies.txt';
-    if (!fs.existsSync(cookiesFile)) {
-      throw new Error(`cookies-file not found: ${cookiesFile}`);
-    }
-    args.push('--cookies', cookiesFile);
+  applyAuthArgs(config, args);
+
+  return args;
+}
+
+function buildTitleArgs(config: AppConfig): string[] {
+  const args: string[] = [config.videoUrl, '--skip-download', '--no-playlist', '--print', 'title'];
+
+  if (config.ytdlp.jsRuntime) {
+    args.push('--js-runtimes', config.ytdlp.jsRuntime);
   }
+
+  applyAuthArgs(config, args);
 
   return args;
 }
@@ -257,6 +281,30 @@ function findChatFile(outputDir: string): string {
 
 function createRunOutputDir(outputDir: string): string {
   return fs.mkdtempSync(path.join(outputDir, 'run-'));
+}
+
+export async function loadVideoTitle(config: AppConfig, alias?: string): Promise<string> {
+  const { executablePath } = config.ytdlp;
+  const prefix = formatJobPrefix(alias);
+
+  logger.info(`${prefix} Reading video title via yt-dlp...`);
+
+  try {
+    const result = await runYtDlp(buildTitleArgs(config), executablePath, alias);
+    const title = result.stdout
+      .split(/\r?\n|\r/)
+      .map((line) => line.trim())
+      .find(Boolean);
+
+    if (title) {
+      return title;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn(`${prefix} Failed to read video title via yt-dlp: ${message}`);
+  }
+
+  return 'Unknown title';
 }
 
 async function parseChatFile(

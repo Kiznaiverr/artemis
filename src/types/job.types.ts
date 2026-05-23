@@ -4,6 +4,7 @@ export type JobStatus = 'queued' | 'running' | 'done' | 'failed';
 
 export interface JobResult {
   jobId: string;
+  videoTitle: string;
   videoUrl: string;
   generatedAt: string;
   clips: ClipRange[];
@@ -14,9 +15,21 @@ export interface JobResult {
   };
 }
 
+export interface CompletedJobSummary {
+  jobId: string;
+  videoTitle: string;
+  videoUrl: string;
+  generatedAt: string;
+  clipsCount: number;
+  outputId: string;
+  resultUrl: string;
+  status: 'done';
+}
+
 export interface JobRecord {
   jobId: string;
   alias: string;
+  videoTitle: string;
   status: JobStatus;
   createdAt: string;
   updatedAt: string;

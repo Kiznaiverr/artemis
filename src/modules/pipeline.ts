@@ -12,6 +12,7 @@ export async function runPeakPipeline(
   config: AppConfig,
   jobId: string,
   alias?: string,
+  videoTitle = 'Unknown title',
 ): Promise<JobResult> {
   const prefix = formatJobPrefix(alias);
 
@@ -45,6 +46,7 @@ export async function runPeakPipeline(
 
   return {
     jobId,
+    videoTitle,
     videoUrl: config.videoUrl,
     generatedAt: new Date().toISOString(),
     clips,

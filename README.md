@@ -6,6 +6,8 @@ Key points
 
 - Submits analysis jobs via `POST /peaks` and returns a `jobId` immediately.
 - Poll job progress with `GET /peaks/:jobId` and fetch final results from `GET /peaks/:jobId/result`.
+- List finished jobs with `GET /jobs/completed`, backed by the JSON files stored under `output/jobs`.
+- Every job response includes `videoTitle` so clients can show the stream title without fetching it again.
 - Uses a rolling time-window analysis to score chat activity, then applies heuristics and an optional AI reranker to select top clips.
 - OpenAPI spec is available at `/openapi.json` and an interactive Scalar playground is served at `/docs`.
 
@@ -19,7 +21,9 @@ npm install
 
 2. Configure environment variables (see `.env.example`). Important vars include API keys for AI providers and tuning values such as `TOP_N`, `WINDOW_SIZE`, and `WINDOW_STEP`.
 
-3. Run in development:
+3. Job results stay on disk for 3 days before cleanup removes them from `output/jobs`.
+
+4. Run in development:
 
 ```bash
 npm run dev
@@ -52,6 +56,7 @@ Behavior notes
 
 - The API returns consistent JSON envelopes for success and error cases.
 - Tuning parameters are primarily read from environment variables and validated at job creation.
+- Completed jobs are sourced from the filesystem, so `GET /jobs/completed` only shows jobs whose result files still exist.
 - The AI reranker is optional and requires provider API keys; if missing, the service falls back to heuristic selection.
 
 Contributing

@@ -13,3 +13,7 @@ export function buildJobCheckUrl(jobId: string): string {
 export function buildJobResultUrl(jobId: string): string {
   return `/peaks/${jobId}/result`;
 }
+
+export function buildCompletedJobsUrl(): string {
+  return '/jobs/completed';
+}
