@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { AiRankRequest, AiRanker, PeakRankResponse } from "../types";
+import { logger } from "../../utils/logger";
 
 export interface OpenRouterConfig {
   apiKey: string;
@@ -101,6 +102,14 @@ function parseRankResponse(content: string): PeakRankResponse {
   };
 }
 
+function formatDebugJson(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
 export class OpenRouterRanker implements AiRanker {
   private client?: OpenAI;
 
@@ -132,6 +141,31 @@ export class OpenRouterRanker implements AiRanker {
     let content: string | null | undefined;
 
     try {
+      logger.debug(
+        `[ai][openrouter] sending request: ${formatDebugJson({
+          model: this.config.model,
+          baseUrl: normalizeBaseUrl(this.config.baseUrl),
+          messages: [
+            {
+              role: "system",
+              content: [
+                request.systemPrompt,
+                request.contextRules,
+                request.outputFormat,
+              ].join("\n\n"),
+            },
+            {
+              role: "user",
+              content: [
+                request.taskPrompt,
+                "Candidates:",
+                JSON.stringify(request.candidates, null, 2),
+              ].join("\n\n"),
+            },
+          ],
+        })}`,
+      );
+
       const response = await this.getClient().chat.completions.create({
         model: this.config.model,
         temperature: 0.2,
@@ -156,6 +190,10 @@ export class OpenRouterRanker implements AiRanker {
       });
 
       content = response.choices?.[0]?.message?.content;
+
+      logger.debug(
+        `[ai][openrouter] raw response content: ${formatDebugJson(content)}`,
+      );
     } catch (error) {
       throw new Error(
         `OpenRouter request failed (model=${this.config.model}, baseUrl=${normalizeBaseUrl(this.config.baseUrl)}): ${formatErrorDetails(error)}`,

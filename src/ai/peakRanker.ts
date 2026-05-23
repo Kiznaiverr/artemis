@@ -7,6 +7,14 @@ import { loadRankerPrompts } from "./promptLoader";
 import { PeakRankSelection, SubtitleSegment } from "./types";
 import { logger } from "../utils/logger";
 
+function formatDebugJson(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
 function getAiProviderConfig(config: AppConfig): {
   provider: AppConfig["ai"]["provider"];
   apiKey: string;
@@ -119,6 +127,20 @@ export async function rerankPeakClips(
       subtitleSegments,
       config.clipPadding.before * 1000,
       config.clipPadding.after * 1000,
+    );
+
+    logger.debug(
+      `${prefix} AI request payload: ${formatDebugJson({
+        provider: aiConfig.provider,
+        model: aiConfig.model,
+        baseUrl: aiConfig.baseUrl,
+        candidateCount: candidates.length,
+        candidates,
+        systemPrompt: prompts.systemPrompt,
+        taskPrompt: `${prompts.taskPrompt}\n\n${strictAddendum}`,
+        contextRules: prompts.contextRules,
+        outputFormat: prompts.outputFormat,
+      })}`,
     );
 
     const result = await ranker.rankPeaks({
