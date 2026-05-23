@@ -8,6 +8,7 @@ import { logger } from '../utils/logger';
 import { scoreComment } from './parser';
 import { loadBestSubtitleSegments } from '../ai/subtitleParser';
 import { getPositiveEnvNumber } from '../config/env';
+import { formatJobPrefix } from '../utils/jobLabel';
 
 const PROGRESS_LOG_INTERVAL_MS = 5000;
 const DEFAULT_YTDLP_TIMEOUT_MS = 5 * 60 * 1000;
@@ -28,10 +29,6 @@ type ProgressLogState = {
 
 function normalizeProgressLine(line: string): string {
   return line.replace(/\s+/g, ' ').trim();
-}
-
-function jobPrefix(alias?: string): string {
-  return alias ? `[${alias}]` : '[job]';
 }
 
 function shouldLogProgressLine(line: string, state: ProgressLogState): boolean {
@@ -66,7 +63,7 @@ function logYtDlpOutput(
 ): void {
   const text = chunk.toString('utf8');
   const lines = text.split(/\r?\n|\r/).map((line) => line.trim());
-  const prefix = jobPrefix(alias);
+  const prefix = formatJobPrefix(alias);
 
   for (const line of lines) {
     if (!line) continue;
@@ -130,7 +127,7 @@ function runYtDlp(args: string[], executablePath: string, alias?: string): Promi
       callback();
     };
 
-    logger.debug(`${jobPrefix(alias)} [yt-dlp] spawned pid=${proc.pid ?? 'unknown'}`);
+    logger.debug(`${formatJobPrefix(alias)} [yt-dlp] spawned pid=${proc.pid ?? 'unknown'}`);
 
     proc.stdout.on('data', (data: Buffer) => {
       stdoutBuffer += data.toString('utf8');
@@ -146,7 +143,7 @@ function runYtDlp(args: string[], executablePath: string, alias?: string): Promi
       settle(() => {
         reject(
           new Error(
-            `${jobPrefix(alias)} Failed to start yt-dlp: ${err.message}\n` +
+            `${formatJobPrefix(alias)} Failed to start yt-dlp: ${err.message}\n` +
               `Make sure yt-dlp is installed and available in PATH.\n` +
               `Install: pip install yt-dlp`,
           ),
@@ -156,7 +153,7 @@ function runYtDlp(args: string[], executablePath: string, alias?: string): Promi
 
     proc.on('exit', (code, signal) => {
       logger.debug(
-        `${jobPrefix(alias)} [yt-dlp] exit pid=${proc.pid ?? 'unknown'} code=${code ?? 'null'} signal=${signal ?? 'null'}`,
+        `${formatJobPrefix(alias)} [yt-dlp] exit pid=${proc.pid ?? 'unknown'} code=${code ?? 'null'} signal=${signal ?? 'null'}`,
       );
     });
 
@@ -168,7 +165,7 @@ function runYtDlp(args: string[], executablePath: string, alias?: string): Promi
         if (fatalMessage) {
           reject(
             new Error(
-              `${jobPrefix(alias)} yt-dlp reported that live chat subtitles are unavailable: ${fatalMessage}`,
+              `${formatJobPrefix(alias)} yt-dlp reported that live chat subtitles are unavailable: ${fatalMessage}`,
             ),
           );
           return;
@@ -179,7 +176,7 @@ function runYtDlp(args: string[], executablePath: string, alias?: string): Promi
         } else {
           reject(
             new Error(
-              `${jobPrefix(alias)} yt-dlp exited with code ${code}. Check yt-dlp output above for details.`,
+              `${formatJobPrefix(alias)} yt-dlp exited with code ${code}. Check yt-dlp output above for details.`,
             ),
           );
         }
@@ -188,14 +185,14 @@ function runYtDlp(args: string[], executablePath: string, alias?: string): Promi
 
     timeoutHandle = setTimeout(() => {
       logger.warn(
-        `${jobPrefix(alias)} [yt-dlp] timeout reached pid=${proc.pid ?? 'unknown'}, terminating child process`,
+        `${formatJobPrefix(alias)} [yt-dlp] timeout reached pid=${proc.pid ?? 'unknown'}, terminating child process`,
       );
 
       proc.kill('SIGKILL');
       settle(() => {
         reject(
           new Error(
-            `${jobPrefix(alias)} yt-dlp timed out after ${Math.round(timeoutMs / 1000)}s while downloading live chat.`,
+            `${formatJobPrefix(alias)} yt-dlp timed out after ${Math.round(timeoutMs / 1000)}s while downloading live chat.`,
           ),
         );
       });
@@ -348,7 +345,7 @@ export async function fetchLiveChat(config: AppConfig, alias?: string): Promise<
   const outputTemplate = path.join(runOutputDir, '%(id)s.%(ext)s');
   const args = buildArgs(config, outputTemplate);
 
-  const prefix = jobPrefix(alias);
+  const prefix = formatJobPrefix(alias);
 
   logger.info(`${prefix} Downloading live chat via yt-dlp...`);
   logger.info(`${prefix} Video: ${config.videoUrl}`);

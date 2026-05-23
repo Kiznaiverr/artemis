@@ -35,7 +35,7 @@ module.exports = [
           varsIgnorePattern: '^_',
         },
       ],
-      'prettier/prettier': 'error',
+      'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
   {
@@ -49,7 +49,7 @@ module.exports = [
       prettier: prettierPlugin,
     },
     rules: {
-      'prettier/prettier': 'error',
+      'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
 ];

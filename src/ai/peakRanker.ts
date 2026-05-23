@@ -4,16 +4,10 @@ import { ClipRange } from '../types/peak.types';
 import { createAiRanker } from './client';
 import { buildPeakContextCandidates } from './context';
 import { loadRankerPrompts } from './promptLoader';
+import { formatDebugJson } from './shared';
 import { PeakRankSelection, SubtitleSegment } from './types';
 import { logger } from '../utils/logger';
-
-function formatDebugJson(value: unknown): string {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
+import { formatJobPrefix } from '../utils/jobLabel';
 
 function getAiProviderConfig(config: AppConfig): {
   provider: AppConfig['ai']['provider'];
@@ -36,10 +30,6 @@ function getAiProviderConfig(config: AppConfig): {
     model: config.ai.openrouter.model,
     baseUrl: config.ai.openrouter.baseUrl,
   };
-}
-
-function jobPrefix(alias?: string): string {
-  return alias ? `[${alias}]` : '[job]';
 }
 
 function remapPeakIndex(clip: ClipRange, peakIndex: number): ClipRange {
@@ -91,7 +81,7 @@ export async function rerankPeakClips(
   config: AppConfig,
   alias?: string,
 ): Promise<ClipRange[]> {
-  const prefix = jobPrefix(alias);
+  const prefix = formatJobPrefix(alias);
   const limit = Math.min(config.topN, clips.length);
 
   if (limit === 0) {

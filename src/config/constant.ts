@@ -1,4 +1,5 @@
 import { AppConfig } from '../types/config.types';
+import { AI_PROVIDER_DEFAULTS, OUTPUT_DEFAULTS } from './defaults';
 import { getEnvNumber, getEnvString } from './env';
 
 function normalizeAiProvider(value?: string): AppConfig['ai']['provider'] {
@@ -45,19 +46,19 @@ export const config: AppConfig = {
     ),
     openrouter: {
       apiKey: getEnvString('openrouter_api_key', getEnvString('OPENROUTER_API_KEY', '')),
-      model: 'deepseek/deepseek-v4-flash:free',
-      baseUrl: 'https://openrouter.ai/api/v1',
-      httpReferer: 'https://github.com/kiznaiverr/artemis',
-      appTitle: 'artemis',
+      model: AI_PROVIDER_DEFAULTS.openrouter.model,
+      baseUrl: AI_PROVIDER_DEFAULTS.openrouter.baseUrl,
+      httpReferer: AI_PROVIDER_DEFAULTS.openrouter.httpReferer,
+      appTitle: AI_PROVIDER_DEFAULTS.openrouter.appTitle,
     },
     sumopod: {
       apiKey: getEnvString('sumopod_api_key', getEnvString('SUMOPOD_API_KEY', '')),
-      model: getEnvString('SUMOPOD_MODEL', 'deepseek-v4-flash'),
-      baseUrl: getEnvString('SUMOPOD_BASE_URL', 'https://ai.sumopod.com/v1'),
+      model: getEnvString('SUMOPOD_MODEL', AI_PROVIDER_DEFAULTS.sumopod.model),
+      baseUrl: getEnvString('SUMOPOD_BASE_URL', AI_PROVIDER_DEFAULTS.sumopod.baseUrl),
     },
   },
   output: {
-    dir: './output',
-    filename: 'peaks.json',
+    dir: OUTPUT_DEFAULTS.dir,
+    filename: OUTPUT_DEFAULTS.filename,
   },
 };

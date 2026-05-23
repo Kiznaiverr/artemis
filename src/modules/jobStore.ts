@@ -168,17 +168,3 @@ export function enqueueJob(jobId: string, config: AppConfig, handler: JobHandler
 
   return jobs.get(jobId) as JobRecord;
 }
-
-export function purgeAllJobFiles(): void {
-  for (const record of jobs.values()) {
-    deleteResultFile(record.resultPath);
-  }
-
-  jobs.clear();
-  queue.length = 0;
-
-  if (cleanupTimer) {
-    clearInterval(cleanupTimer);
-    cleanupTimer = undefined;
-  }
-}

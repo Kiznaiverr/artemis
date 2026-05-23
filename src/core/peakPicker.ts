@@ -2,6 +2,7 @@ import { AppConfig } from '../types/config.types';
 import { ClipRange, PeakCandidate, TimeSeries } from '../types/peak.types';
 import { formatMs } from '../utils/timeFormat';
 import { logger } from '../utils/logger';
+import { formatJobPrefix } from '../utils/jobLabel';
 
 function isLocalMaximum(series: TimeSeries[], index: number): boolean {
   if (index <= 0 || index >= series.length - 1) {
@@ -31,7 +32,7 @@ export function pickPeaks(series: TimeSeries[], config: AppConfig, alias?: strin
     return [];
   }
 
-  const prefix = alias ? `[${alias}]` : '[job]';
+  const prefix = formatJobPrefix(alias);
 
   logger.info(`${prefix} picking peaks from ${series.length} normalized points`);
 

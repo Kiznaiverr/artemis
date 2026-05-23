@@ -6,17 +6,14 @@ import { pickPeaks } from '../core/peakPicker';
 import { fetchLiveChat } from './fetcher';
 import { logger } from '../utils/logger';
 import { rerankPeakClips } from '../ai/peakRanker';
-
-function jobPrefix(alias?: string): string {
-  return alias ? `[${alias}]` : '[job]';
-}
+import { formatJobPrefix } from '../utils/jobLabel';
 
 export async function runPeakPipeline(
   config: AppConfig,
   jobId: string,
   alias?: string,
 ): Promise<JobResult> {
-  const prefix = jobPrefix(alias);
+  const prefix = formatJobPrefix(alias);
 
   logger.info(`${prefix} starting job`);
 

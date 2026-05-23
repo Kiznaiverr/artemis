@@ -1,16 +1,7 @@
 import { AppConfig } from '../types/config.types';
 import { TimeSeries, WeightedEvent } from '../types';
 import { logger } from '../utils/logger';
-
-function sumScores(events: WeightedEvent[], startMs: number, endMs: number): number {
-  let total = 0;
-  for (const event of events) {
-    if (event.timestampMs >= startMs && event.timestampMs <= endMs) {
-      total += event.score;
-    }
-  }
-  return total;
-}
+import { formatJobPrefix } from '../utils/jobLabel';
 
 export function buildTimeSeries(
   events: WeightedEvent[],
@@ -28,18 +19,33 @@ export function buildTimeSeries(
   const stepMs = config.window.step * 1000;
   const halfWindow = windowSizeMs / 2;
 
-  const prefix = alias ? `[${alias}]` : '[job]';
+  const prefix = formatJobPrefix(alias);
 
   logger.info(`${prefix} building time series with ${events.length} weighted events`);
 
   const series: Omit<TimeSeries, 'normalizedScore'>[] = [];
+  let leftIndex = 0;
+  let rightIndex = 0;
+  let windowSum = 0;
+
   // Walk the timeline in fixed steps and score each window.
   for (let center = minTimestamp; center <= maxTimestamp; center += stepMs) {
-    const rawScore = sumScores(sortedEvents, center - halfWindow, center + halfWindow);
+    const startMs = center - halfWindow;
+    const endMs = center + halfWindow;
+
+    while (leftIndex < sortedEvents.length && sortedEvents[leftIndex].timestampMs < startMs) {
+      windowSum -= sortedEvents[leftIndex].score;
+      leftIndex += 1;
+    }
+
+    while (rightIndex < sortedEvents.length && sortedEvents[rightIndex].timestampMs <= endMs) {
+      windowSum += sortedEvents[rightIndex].score;
+      rightIndex += 1;
+    }
 
     series.push({
       timestampMs: center,
-      rawScore,
+      rawScore: windowSum,
     });
   }
 

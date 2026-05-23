@@ -4,46 +4,15 @@ import { apiReference } from '@scalar/express-api-reference';
 import { config as baseConfig } from './config/constant';
 import { getEnvNumber } from './config/env';
 import { ApiError, isApiError } from './http/apiError';
+import { sendError, sendSuccess } from './http/response';
 import { openApiSpec } from './http/openapi';
 import { buildConfigFromBody } from './modules/configBuilder';
 import { enqueueJob, getJobRecord, startJobCleanupTimer } from './modules/jobStore';
 import { runPeakPipeline } from './modules/pipeline';
 import { httpLogger, logger } from './utils/logger';
+import { buildJobCheckUrl, buildJobOutputId, buildJobResultUrl } from './utils/jobLabel';
 
 type JsonResponse = Record<string, unknown>;
-
-function sendSuccess<T>(response: Response, data: T, statusCode = 200): Response {
-  return response.status(statusCode).json({
-    success: true,
-    data,
-  });
-}
-
-function sendError(
-  response: Response,
-  statusCode: number,
-  code: string,
-  message: string,
-  details?: unknown,
-): Response {
-  const payload: JsonResponse = {
-    success: false,
-    error: {
-      code,
-      message,
-    },
-  };
-
-  if (details !== undefined) {
-    (payload.error as Record<string, unknown>).details = details;
-  }
-
-  return response.status(statusCode).json(payload);
-}
-
-function getOutputId(jobId: string): string {
-  return `${jobId}.json`;
-}
 
 function readPathParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -135,8 +104,8 @@ export function createApp() {
           jobId: record.jobId,
           alias: record.alias,
           status: record.status,
-          checkUrl: `/peaks/${record.jobId}`,
-          resultUrl: `/peaks/${record.jobId}/result`,
+          checkUrl: buildJobCheckUrl(record.jobId),
+          resultUrl: buildJobResultUrl(record.jobId),
         },
         201,
       );
@@ -161,8 +130,8 @@ export function createApp() {
       };
 
       if (record.status === 'done') {
-        payload.outputId = getOutputId(record.jobId);
-        payload.resultUrl = `/peaks/${record.jobId}/result`;
+        payload.outputId = buildJobOutputId(record.jobId);
+        payload.resultUrl = buildJobResultUrl(record.jobId);
       }
 
       if (record.status === 'failed' && record.error) {
@@ -193,7 +162,7 @@ export function createApp() {
 
       sendSuccess(response, {
         ...record.result,
-        outputId: getOutputId(record.jobId),
+        outputId: buildJobOutputId(record.jobId),
       });
     }),
   );

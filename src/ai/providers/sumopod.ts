@@ -1,31 +1,13 @@
 import OpenAI from 'openai';
 import { AiRankRequest, AiRanker, PeakRankResponse } from '../types';
 import { logger } from '../../utils/logger';
+import { AI_PROVIDER_DEFAULTS } from '../../config/defaults';
+import { formatDebugJson, formatJsonValue, normalizeBaseUrl, stripCodeFence } from '../shared';
 
 export interface SumopodConfig {
   apiKey: string;
   model: string;
   baseUrl?: string;
-}
-
-function normalizeBaseUrl(value?: string): string {
-  return value?.trim() || 'https://ai.sumopod.com/v1';
-}
-
-function formatJsonValue(value: unknown): string {
-  if (value === undefined) {
-    return 'undefined';
-  }
-
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
 }
 
 function formatErrorValue(value: unknown): string {
@@ -113,18 +95,6 @@ function formatErrorDetails(error: unknown): string {
   return String(error);
 }
 
-function stripCodeFence(text: string): string {
-  const trimmed = text.trim();
-  if (!trimmed.startsWith('``')) {
-    return trimmed;
-  }
-
-  return trimmed
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-}
-
 function parseRankResponse(content: string): PeakRankResponse {
   const raw = stripCodeFence(content);
   const parsed = JSON.parse(raw) as PeakRankResponse;
@@ -144,14 +114,6 @@ function parseRankResponse(content: string): PeakRankResponse {
   };
 }
 
-function formatDebugJson(value: unknown): string {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
-
 export class SumopodRanker implements AiRanker {
   private client?: OpenAI;
 
@@ -161,7 +123,7 @@ export class SumopodRanker implements AiRanker {
     if (!this.client) {
       this.client = new OpenAI({
         apiKey: this.config.apiKey,
-        baseURL: normalizeBaseUrl(this.config.baseUrl),
+        baseURL: normalizeBaseUrl(this.config.baseUrl, AI_PROVIDER_DEFAULTS.sumopod.baseUrl),
       });
     }
 
@@ -179,7 +141,7 @@ export class SumopodRanker implements AiRanker {
       logger.debug(
         `[ai][sumopod] sending request: ${formatDebugJson({
           model: this.config.model,
-          baseUrl: normalizeBaseUrl(this.config.baseUrl),
+          baseUrl: normalizeBaseUrl(this.config.baseUrl, AI_PROVIDER_DEFAULTS.sumopod.baseUrl),
           messages: [
             {
               role: 'system',
@@ -225,7 +187,7 @@ export class SumopodRanker implements AiRanker {
       logger.debug(`[ai][sumopod] raw response content: ${formatDebugJson(content)}`);
     } catch (error) {
       const wrappedError = new Error(
-        `Sumopod request failed (model=${this.config.model}, baseUrl=${normalizeBaseUrl(this.config.baseUrl)}): ${formatErrorDetails(error)}`,
+        `Sumopod request failed (model=${this.config.model}, baseUrl=${normalizeBaseUrl(this.config.baseUrl, AI_PROVIDER_DEFAULTS.sumopod.baseUrl)}): ${formatErrorDetails(error)}`,
       ) as Error & { cause?: unknown };
 
       wrappedError.cause = error;

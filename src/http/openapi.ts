@@ -71,7 +71,7 @@ export const openApiSpec = {
                     alias: 'J1',
                     status: 'running',
                     progress: {
-                      stage: 'downloading',
+                      stage: 'running',
                       message: 'Job is processing the YouTube URL',
                     },
                   },
@@ -231,7 +231,7 @@ export const openApiSpec = {
                 type: 'object',
                 required: ['stage', 'message'],
                 properties: {
-                  stage: { type: 'string', example: 'downloading' },
+                  stage: { type: 'string', example: 'running' },
                   message: {
                     type: 'string',
                     example: 'Job is processing the YouTube URL',

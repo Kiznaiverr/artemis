@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { SubtitleSegment } from './types';
 import { logger } from '../utils/logger';
+import { formatJobPrefix } from '../utils/jobLabel';
 
 function parseTimestampToMs(rawValue: string): number | undefined {
   const trimmed = rawValue.trim().replace(',', '.');
@@ -139,7 +140,9 @@ export async function loadBestSubtitleSegments(
   }
 
   if (alias && bestSegments && bestFile) {
-    logger.debug(`[${alias}] subtitle track selected: ${bestFile} (${bestSegments.length} cues)`);
+    logger.debug(
+      `${formatJobPrefix(alias)} subtitle track selected: ${bestFile} (${bestSegments.length} cues)`,
+    );
   }
 
   return bestSegments;
