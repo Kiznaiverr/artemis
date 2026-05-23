@@ -4,7 +4,7 @@ import { ClipRange } from '../types/peak.types';
 import { createAiRanker } from './client';
 import { buildPeakContextCandidates } from './context';
 import { loadRankerPrompts } from './promptLoader';
-import { formatDebugJson } from './shared';
+// import { formatDebugJson } from './shared';
 import { PeakRankSelection, SubtitleSegment } from './types';
 import { logger } from '../utils/logger';
 import { formatJobPrefix } from '../utils/jobLabel';
@@ -115,19 +115,19 @@ export async function rerankPeakClips(
       config.clipPadding.after * 1000,
     );
 
-    logger.debug(
-      `${prefix} AI request payload: ${formatDebugJson({
-        provider: aiConfig.provider,
-        model: aiConfig.model,
-        baseUrl: aiConfig.baseUrl,
-        candidateCount: candidates.length,
-        // candidates,
-        // systemPrompt: prompts.systemPrompt,
-        // taskPrompt: `${prompts.taskPrompt}\n\n${strictAddendum}`,
-        // contextRules: prompts.contextRules,
-        outputFormat: prompts.outputFormat,
-      })}`,
-    );
+    // logger.debug(
+    //   `${prefix} AI request payload: ${formatDebugJson({
+    //     provider: aiConfig.provider,
+    //     model: aiConfig.model,
+    //     baseUrl: aiConfig.baseUrl,
+    //     candidateCount: candidates.length,
+    //     candidates,
+    //     systemPrompt: prompts.systemPrompt,
+    //     taskPrompt: `${prompts.taskPrompt}\n\n${strictAddendum}`,
+    //     contextRules: prompts.contextRules,
+    //     outputFormat: prompts.outputFormat,
+    //   })}`,
+    // );
 
     const result = await ranker.rankPeaks({
       candidates,
