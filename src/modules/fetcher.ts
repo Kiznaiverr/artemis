@@ -234,6 +234,7 @@ function buildBaseArgs(config: AppConfig, outputTemplate: string): string[] {
     config.videoUrl,
     "--skip-download",
     "--write-subs",
+    "--write-auto-subs",
     "-o",
     outputTemplate,
   ];
@@ -260,26 +261,6 @@ function buildBaseArgs(config: AppConfig, outputTemplate: string): string[] {
 function buildArgs(config: AppConfig, outputTemplate: string): string[] {
   const args = buildBaseArgs(config, outputTemplate);
   args.splice(3, 0, "--sub-langs", "live_chat");
-  return args;
-}
-
-function buildSubtitleArgs(
-  config: AppConfig,
-  outputTemplate: string,
-): string[] {
-  const args = buildBaseArgs(config, outputTemplate);
-  args.splice(3, 0, "--write-auto-subs");
-
-  if (config.auth.mode === "browser") {
-    args.push("--cookies-from-browser", config.auth.browser ?? "chrome");
-  } else if (config.auth.mode === "cookies-file") {
-    const cookiesFile = config.auth.cookiesFile ?? "./cookies.txt";
-    if (!fs.existsSync(cookiesFile)) {
-      throw new Error(`cookies-file not found: ${cookiesFile}`);
-    }
-    args.push("--cookies", cookiesFile);
-  }
-
   return args;
 }
 
@@ -409,15 +390,6 @@ export async function fetchLiveChat(
 
   try {
     await runYtDlp(args, executablePath, alias);
-
-    const subtitleArgs = buildSubtitleArgs(config, outputTemplate);
-    logger.info(`${prefix} Downloading subtitles via yt-dlp...`);
-    try {
-      await runYtDlp(subtitleArgs, executablePath, alias);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      logger.warn(`${prefix} Subtitle download skipped: ${message}`);
-    }
 
     const chatFile = findChatFile(runOutputDir);
     logger.info(`${prefix} Parsing: ${chatFile}`);
