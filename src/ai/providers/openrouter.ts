@@ -101,28 +101,28 @@ export class OpenRouterRanker implements AiRanker {
     let content: string | null | undefined;
 
     try {
-      logger.debug(
-        `[ai][openrouter] sending request: ${formatDebugJson({
-          model: this.config.model,
-          baseUrl: normalizeBaseUrl(this.config.baseUrl, AI_PROVIDER_DEFAULTS.openrouter.baseUrl),
-          messages: [
-            {
-              role: 'system',
-              content: [request.systemPrompt, request.contextRules, request.outputFormat].join(
-                '\n\n',
-              ),
-            },
-            {
-              role: 'user',
-              content: [
-                request.taskPrompt,
-                'Candidates:',
-                JSON.stringify(request.candidates, null, 2),
-              ].join('\n\n'),
-            },
-          ],
-        })}`,
-      );
+      // logger.debug(
+      //   `[ai][openrouter] sending request: ${formatDebugJson({
+      //     model: this.config.model,
+      //     baseUrl: normalizeBaseUrl(this.config.baseUrl, AI_PROVIDER_DEFAULTS.openrouter.baseUrl),
+      //     messages: [
+      //       {
+      //         role: 'system',
+      //         content: [request.systemPrompt, request.contextRules, request.outputFormat].join(
+      //           '\n\n',
+      //         ),
+      //       },
+      //       {
+      //         role: 'user',
+      //         content: [
+      //           request.taskPrompt,
+      //           'Candidates:',
+      //           JSON.stringify(request.candidates, null, 2),
+      //         ].join('\n\n'),
+      //       },
+      //     ],
+      //   })}`,
+      // );
 
       const response = await this.getClient().chat.completions.create({
         model: this.config.model,
