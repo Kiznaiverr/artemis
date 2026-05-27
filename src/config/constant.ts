@@ -1,6 +1,6 @@
 import { AppConfig } from '../types/config.types';
 import { AI_PROVIDER_DEFAULTS, OUTPUT_DEFAULTS } from './defaults';
-import { getEnvNumber, getEnvString } from './env';
+import { getEnvNumber, getEnvString, getEnvBoolean } from './env';
 
 function normalizeAiProvider(value?: string): AppConfig['ai']['provider'] {
   const normalized = value?.trim().toLowerCase();
@@ -41,6 +41,7 @@ export const config: AppConfig = {
     minLength: 2,
   },
   ai: {
+    enabled: getEnvBoolean('ENABLE_AI', false),
     provider: normalizeAiProvider(
       getEnvString('api_provider', getEnvString('API_PROVIDER', 'openrouter')),
     ),

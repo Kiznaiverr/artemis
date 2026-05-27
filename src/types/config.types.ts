@@ -31,6 +31,7 @@ export interface AppConfig {
     minLength: number;
   };
   ai: {
+    enabled: boolean;
     provider: AiProviderName;
     openrouter: {
       apiKey: string;
