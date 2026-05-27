@@ -5,11 +5,12 @@ services:
       context: .
       dockerfile: Dockerfile
     expose:
-      - "3000"
+      - '3000'
     env_file:
       - .env
     volumes:
       - ./output:/app/output
+      - ./cookies.txt:/app/cookies.txt:ro
     restart: unless-stopped
 
   cloudflared:
