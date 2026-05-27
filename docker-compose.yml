@@ -10,7 +10,7 @@ services:
       - .env
     volumes:
       - ./output:/app/output
-      - ./cookies.txt:/app/cookies.txt:ro
+      - ./cookies.txt:/app/cookies.txt
     restart: unless-stopped
 
   cloudflared:
