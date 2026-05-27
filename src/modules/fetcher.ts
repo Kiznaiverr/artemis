@@ -209,14 +209,27 @@ function runYtDlp(args: string[], executablePath: string, alias?: string): Promi
 }
 
 function applyAuthArgs(config: AppConfig, args: string[]): void {
+  const cookiesFile = config.auth.cookiesFile ?? './cookies.txt';
+
   if (config.auth.mode === 'browser') {
     args.push('--cookies-from-browser', config.auth.browser ?? 'chrome');
-  } else if (config.auth.mode === 'cookies-file') {
-    const cookiesFile = config.auth.cookiesFile ?? './cookies.txt';
+    return;
+  }
+
+  if (config.auth.mode === 'cookies-file') {
     if (!fs.existsSync(cookiesFile)) {
       throw new Error(`cookies-file not found: ${cookiesFile}`);
     }
     args.push('--cookies', cookiesFile);
+    return;
+  }
+
+  // If auth mode is 'none', auto-detect cookies file and use it if present.
+  if (config.auth.mode === 'none') {
+    if (fs.existsSync(cookiesFile)) {
+      logger.info(`[yt-dlp] auto-using cookies file: ${cookiesFile}`);
+      args.push('--cookies', cookiesFile);
+    }
   }
 }
 
