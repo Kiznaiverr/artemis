@@ -88,6 +88,11 @@ export async function rerankPeakClips(
     return [];
   }
 
+  if (!config.ai.enabled) {
+    logger.info(`${prefix} AI reranker disabled by ENABLE_AI=false, using heuristic peaks only`);
+    return fallbackTopClips(clips, limit);
+  }
+
   const aiConfig = getAiProviderConfig(config);
   const apiKey = aiConfig.apiKey.trim();
   if (!apiKey) {

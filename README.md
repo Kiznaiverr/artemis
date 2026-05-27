@@ -57,7 +57,7 @@ Behavior notes
 - The API returns consistent JSON envelopes for success and error cases.
 - Tuning parameters are primarily read from environment variables and validated at job creation.
 - Completed jobs are sourced from the filesystem, so `GET /jobs/completed` only shows jobs whose result files still exist.
-- The AI reranker is optional and requires provider API keys; if missing, the service falls back to heuristic selection.
+- The AI reranker is controlled by `ENABLE_AI`. When it is `false`, the service skips AI entirely and uses heuristic selection. When it is `true`, provider API keys are required; if missing, the service falls back to heuristic selection.
 
 Contributing
 

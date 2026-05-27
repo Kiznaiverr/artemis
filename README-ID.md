@@ -57,7 +57,7 @@ Catatan perilaku
 - API mengembalikan envelope JSON konsisten untuk kasus sukses dan error.
 - Parameter tuning dibaca dari variabel lingkungan dan divalidasi saat pembuatan pekerjaan.
 - Job selesai dibaca dari filesystem, jadi `GET /jobs/completed` hanya menampilkan job yang file hasilnya masih ada.
-- Peringkat ulang AI bersifat opsional dan memerlukan kunci API penyedia; jika tidak ada, layanan kembali menggunakan heuristik.
+- Peringkat ulang AI dikendalikan oleh `ENABLE_AI`. Jika `false`, AI dilewati sepenuhnya dan layanan langsung memakai heuristik. Jika `true`, kunci API penyedia diperlukan; jika tidak ada, layanan kembali menggunakan heuristik.
 
 Kontribusi
 
